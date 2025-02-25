@@ -1,7 +1,7 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 
-name: Build and deploy ASP.Net Core app to Azure Web App - uxcheckmatetest
+name: Build and deploy ASP.Net Core app to Azure Web App - UxCheckmateTest
 
 on:
   push:
@@ -54,15 +54,15 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_7ED64240C2164BEB8A35716D17B44EE8 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3C5F7BA7F3FC48BAAD3994EEC3CE4558 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_8621D4BD7D1348F3AF9C935978E0DB1F }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4D3393CEB48F4CA29B25BE17E8EFF57D }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_1B586A0C7BC54F71AFC04C811D63C1AE }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_EE6F06BECA8F44B1BDA619AF1B1B237F }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'uxcheckmatetest'
+          app-name: 'UxCheckmateTest'
           slot-name: 'Production'
           package: .
           
