@@ -54,7 +54,7 @@ jobs:
 
       - name: Download Chromium headless_shell 1155 (Windows)
         run: |
-          echo "📦 Downloading Chromium headless_shell v1155..."
+          echo "Downloading Chromium headless_shell v1155..."
           mkdir C:\chromium1155
           curl -L -o C:\chromium1155\chrome.zip https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win/1155/chrome-win.zip
           tar -xf C:\chromium1155\chrome.zip -C C:\chromium1155
@@ -64,14 +64,14 @@ jobs:
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
       - name: Copy headless_shell.exe to wwwroot/ms-playwright
         run: |
-          echo "📁 Copying Chromium 1155 to wwwroot..."
+          echo "Copying Chromium 1155 to wwwroot..."
           mkdir ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright
           copy C:\chromium1155\chrome-win\headless_shell.exe ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright\
         shell: powershell
 
       - name: Inspect publish folder
         run: |
-          echo "🧐 Publish folder contents:"
+          echo "Publish folder contents:"
           dir ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright
         shell: powershell
 
