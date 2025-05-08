@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout code
@@ -45,34 +45,31 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.x'
+          
+      - name: Setup Node and Install Playwright
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
+      - name: Install Playwright and Chromium
+        run: |
+          npm install playwright
+          
       - name: Restore
         run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
 
       - name: Build
         run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --no-restore
 
-      - name: Download Chromium headless_shell 1155 (Linux)
-        run: |
-          echo "Downloading Chromium headless_shell v1155..."
-          mkdir -p ~/chromium1155
-          wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/1155/chrome-linux.zip -O ~/chromium1155/chrome.zip
-          unzip ~/chromium1155/chrome.zip -d ~/chromium1155
-          chmod +x ~/chromium1155/chrome-linux/headless_shell
-
       - name: Publish .NET project
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Copy headless_shell to wwwroot/ms-playwright
         run: |
-          echo "Copying Chromium 1155 to wwwroot..."
+          echo "Copying Chromium to wwwroot..."
           mkdir -p ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright
-          cp ~/chromium1155/chrome-linux/headless_shell ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright/
-
-      - name: Inspect publish folder
-        run: |
-          echo "Publish folder contents:"
-          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright
+          copy "$env:USERPROFILE\AppData\Local\ms-playwright\chromium-*" "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright\" -Recurse
+        shell: powershell
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v2
