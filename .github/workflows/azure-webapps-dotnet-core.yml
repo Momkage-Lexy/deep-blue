@@ -64,13 +64,6 @@ jobs:
       - name: Publish .NET project
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      - name: Copy headless_shell to wwwroot/ms-playwright
-        run: |
-          echo "Copying Chromium to wwwroot..."
-          mkdir -p ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright
-          copy "$env:USERPROFILE\AppData\Local\ms-playwright\chromium-*" "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright\" -Recurse
-        shell: powershell
-
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v2
         with:
