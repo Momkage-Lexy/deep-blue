@@ -38,27 +38,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
+      - name: Install Playwright via npm
+        run: |
+          cd ./deepblue/Uxcheckmate/Uxcheckmate_Main
+          npm install
+          npm run install-playwright
 
-      - name: Install Playwright browsers
-        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj -t:PlaywrightInstall --configuration Release
-
-      - name: Build project
-        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release
+      - name: Restore and build .NET
+        run: |
+          cd ./deepblue/Uxcheckmate/Uxcheckmate_Main
+          dotnet restore
+          dotnet build --configuration Release
 
       - name: Publish .NET project
-        run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-
-      - name: Verify Playwright binaries exist
         run: |
-          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/ms-playwright
-          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/runtimes
+          cd ./deepblue/Uxcheckmate/Uxcheckmate_Main
+          dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Verify Playwright binaries
+        run: |
+          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/node_modules/playwright-core/.local-browsers
+          test -d ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/node_modules/playwright-core/.local-browsers/chromium-*
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v2

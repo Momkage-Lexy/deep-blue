@@ -20,7 +20,9 @@ public class Program
     public static void Main(string[] args)
     {
         QuestPDF.Settings.License = LicenseType.Community; // Add this line
-
+        
+        var playwrightPath = Path.Combine(AppContext.BaseDirectory, "node_modules", "playwright-core");
+        Environment.SetEnvironmentVariable("PLAYWRIGHT_BROWSERS_PATH", playwrightPath);
         var builder = WebApplication.CreateBuilder(args);
 
         string openAiApiKey = builder.Configuration["OpenAiApiKey"];
