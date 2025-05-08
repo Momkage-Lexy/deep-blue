@@ -52,6 +52,9 @@
       <None Update="wwwroot\js\playwrightScraperHelper.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
+  </ItemGroup>  
+<Target Name="InstallPlaywright" AfterTargets="Build">
+    <Exec Command="dotnet playwright install" />
+  </Target>
 
 </Project>
