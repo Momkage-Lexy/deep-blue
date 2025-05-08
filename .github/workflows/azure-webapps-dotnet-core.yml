@@ -56,7 +56,7 @@ jobs:
         run: |
           echo "Downloading Chromium headless_shell v1155..."
           mkdir C:\chromium1155
-          curl -L -o C:\chromium1155\chrome.zip https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win/1155/chrome-win.zip
+          Invoke-WebRequest https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win/1155/chrome-win.zip -OutFile C:\chromium1155\chrome.zip
           tar -xf C:\chromium1155\chrome.zip -C C:\chromium1155
         shell: powershell
 
