@@ -47,10 +47,10 @@ jobs:
           dotnet-version: '9.0.x'
 
       - name: Restore
-        run: dotnet restore .\Uxcheckmate\Uxcheckmate.sln
+        run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
 
       - name: Build
-        run: dotnet build .\Uxcheckmate\Uxcheckmate.sln --configuration Release --no-restore
+        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --no-restore
 
       - name: Download Chromium headless_shell 1155 (Windows)
         run: |
