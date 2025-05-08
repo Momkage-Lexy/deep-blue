@@ -43,19 +43,14 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Install Playwright CLI globally
-        run: dotnet tool install --global Microsoft.Playwright.CLI
-
-      - name: Add Playwright CLI to PATH
-        run: echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
-
       - name: Restore dependencies
         run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
 
-      - name: Build and install Playwright
-        run: |
-          dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release
-          playwright install --with-deps
+      - name: Install Playwright browsers
+        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj -t:PlaywrightInstall --configuration Release
+
+      - name: Build project
+        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release
 
       - name: Publish .NET project
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
