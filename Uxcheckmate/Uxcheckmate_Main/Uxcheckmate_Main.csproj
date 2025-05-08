@@ -52,6 +52,5 @@
       <None Update="wwwroot\js\playwrightScraperHelper.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  </ItemGroup>
-
+  </ItemGroup>  
 </Project>

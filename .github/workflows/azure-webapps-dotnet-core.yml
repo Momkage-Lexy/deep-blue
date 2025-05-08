@@ -30,9 +30,6 @@ env:
   AZURE_WEBAPP_PACKAGE_PATH: ./publish
   DB_STRING_SECRET: ${{ secrets.DB_STRING_SECRET }}
 
-permissions:
-  contents: read
-
 jobs:
   publish:
     runs-on: windows-latest
@@ -45,24 +42,23 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.x'
-          
-      - name: Setup Node and Install Playwright
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
 
-      - name: Install Playwright and Chromium
-        run: |
-          npm install playwright
-          
-      - name: Restore
+      - name: Restore dependencies
         run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
 
-      - name: Build
-        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --no-restore
+      - name: Install Playwright browsers
+        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj -t:PlaywrightInstall --configuration Release
+
+      - name: Build project
+        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release
 
       - name: Publish .NET project
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Verify Playwright binaries exist
+        run: |
+          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/ms-playwright
+          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/runtimes
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v2
@@ -70,5 +66,3 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-
-
