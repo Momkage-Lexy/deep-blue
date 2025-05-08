@@ -53,8 +53,8 @@ jobs:
 
       - name: Install Playwright and Chromium
         run: |
-          npm install playwright
-          npx playwright install --with-deps
+          dotnet add ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj package Microsoft.Playwright
+          pwsh ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/playwright.ps1 install chromium --with-deps
           
       - name: Restore
         run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
