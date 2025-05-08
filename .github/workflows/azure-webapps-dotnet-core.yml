@@ -1,0 +1,74 @@
+# This workflow will build and push a .NET Core app to an Azure Web App when a commit is pushed to your default branch.
+#
+# This workflow assumes you have already created the target Azure App Service web app.
+# For instructions see https://docs.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore?tabs=net60&pivots=development-environment-vscode
+#
+# To configure this workflow:
+#
+# 1. Download the Publish Profile for your Azure Web App. You can download this file from the Overview page of your Web App in the Azure Portal.
+#    For more information: https://docs.microsoft.com/en-us/azure/app-service/deploy-github-actions?tabs=applevel#generate-deployment-credentials
+#
+# 2. Create a secret in your repository named AZURE_WEBAPP_PUBLISH_PROFILE, paste the publish profile contents as the value of the secret.
+#    For instructions on obtaining the publish profile see: https://docs.microsoft.com/azure/app-service/deploy-github-actions#configure-the-github-secret
+#
+# 3. Change the value for the AZURE_WEBAPP_NAME. Optionally, change the AZURE_WEBAPP_PACKAGE_PATH and DOTNET_VERSION environment variables below.
+#
+# For more information on GitHub Actions for Azure: https://github.com/Azure/Actions
+# For more information on the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
+# For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples
+
+name: Publish 🚀
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - deployment
+
+env:
+  AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+  AZURE_WEBAPP_PACKAGE_PATH: ./publish
+  DB_STRING_SECRET: ${{ secrets.DB_STRING_SECRET }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Setup Node and Install Playwright
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install playwright
+          
+      - name: Restore
+        run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
+
+      - name: Build
+        run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --no-restore
+
+      - name: Publish .NET project
+        run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Deploy to Azure
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+
