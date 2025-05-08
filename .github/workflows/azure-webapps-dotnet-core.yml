@@ -35,7 +35,7 @@ permissions:
 
 jobs:
   publish:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
@@ -52,28 +52,27 @@ jobs:
       - name: Build
         run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --no-restore
 
-      - name: Download Chromium headless_shell 1155 (Windows)
+      - name: Download Chromium headless_shell 1155 (Linux)
         run: |
           echo "Downloading Chromium headless_shell v1155..."
-          mkdir C:\chromium1155
-          Invoke-WebRequest https://commondatastorage.googleapis.com/chromium-browser-snapshots/Win/1155/chrome-win.zip -OutFile C:\chromium1155\chrome.zip
-          tar -xf C:\chromium1155\chrome.zip -C C:\chromium1155
-        shell: powershell
+          mkdir -p ~/chromium1155
+          wget https://commondatastorage.googleapis.com/chromium-browser-snapshots/Linux_x64/1155/chrome-linux.zip -O ~/chromium1155/chrome.zip
+          unzip ~/chromium1155/chrome.zip -d ~/chromium1155
+          chmod +x ~/chromium1155/chrome-linux/headless_shell
 
       - name: Publish .NET project
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-      - name: Copy headless_shell.exe to wwwroot/ms-playwright
+
+      - name: Copy headless_shell to wwwroot/ms-playwright
         run: |
           echo "Copying Chromium 1155 to wwwroot..."
-          mkdir ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright
-          copy C:\chromium1155\chrome-win\headless_shell.exe ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright\
-        shell: powershell
+          mkdir -p ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright
+          cp ~/chromium1155/chrome-linux/headless_shell ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright/
 
       - name: Inspect publish folder
         run: |
           echo "Publish folder contents:"
-          dir ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\wwwroot\ms-playwright
-        shell: powershell
+          ls -R ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/wwwroot/ms-playwright
 
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v2
@@ -81,4 +80,5 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
 
