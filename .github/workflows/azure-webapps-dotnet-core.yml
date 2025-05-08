@@ -54,7 +54,7 @@ jobs:
       - name: Install Playwright and Chromium
         run: |
           npm install playwright
-          node node_modules/playwright/cli.js install chromium
+          npx playwright install
           
       - name: Restore
         run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
