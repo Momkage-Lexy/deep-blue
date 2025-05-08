@@ -48,24 +48,23 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: 'deepblue/Uxcheckmate/Uxcheckmate_Main/package-lock.json'
+          cache-dependency-path: 'Uxcheckmate/Uxcheckmate_Main/package-lock.json'
 
       - name: Install Playwright
-        working-directory: ./deepblue/Uxcheckmate/Uxcheckmate_Main
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           npm ci
           npx playwright install chromium --with-deps
-          # Verify installation
           ls -la node_modules/playwright-core/.local-browsers/
 
       - name: Build .NET project
-        working-directory: ./deepblue/Uxcheckmate/Uxcheckmate_Main
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           dotnet restore
           dotnet build --configuration Release
 
       - name: Publish .NET project
-        working-directory: ./deepblue/Uxcheckmate/Uxcheckmate_Main
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
