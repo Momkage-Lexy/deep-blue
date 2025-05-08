@@ -18,98 +18,49 @@
 # For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples
 
 name: Publish 🚀
+
 on:
   workflow_dispatch:
   push:
     branches:
       - deployment
+
 env:
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   AZURE_WEBAPP_PACKAGE_PATH: ./publish
   DB_STRING_SECRET: ${{ secrets.DB_STRING_SECRET }}
-  PLAYWRIGHT_BROWSERS_PATH: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/playwright-browsers
+
 permissions:
   contents: read
+
 jobs:
   publish:
     runs-on: windows-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.x'
-          
-      - name: Install Playwright dependencies
+
+      - name: Setup Node and Install Playwright
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install Playwright and Chromium
         run: |
-          dotnet add ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj package Microsoft.Playwright
-      
+          npm install playwright
+          npx playwright install --with-deps
+          
       - name: Restore
         run: dotnet restore ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj
-        
+
       - name: Build
         run: dotnet build ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --no-restore
-        
+
       - name: Publish .NET project
         run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-      
-      - name: Install Playwright Browsers
-        run: |
-          pwsh ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/playwright.ps1 install chromium --with-deps
-          
-      - name: Create deployment scripts
-        run: |
-          echo "Creating Playwright installation script..."
-          echo 'Write-Output "Installing Playwright browsers..."' > ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Install-Playwright.ps1
-          echo 'pwsh $env:HOME\site\wwwroot\playwright.ps1 install chromium --with-deps' >> ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Install-Playwright.ps1
-          echo 'Write-Output "Playwright browsers installed successfully."' >> ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/Install-Playwright.ps1
-          
-          echo "Creating deployment configuration..."
-          echo "[config]" > ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/.deployment
-          echo "SCM_DO_BUILD_DURING_DEPLOYMENT=true" >> ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/.deployment
-          echo "POST_DEPLOYMENT_ACTION=powershell -File Install-Playwright.ps1" >> ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/.deployment
-      
-      - name: Update web.config for Playwright
-        run: |
-          $webConfigPath = "${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/web.config"
-          $webConfig = Get-Content $webConfigPath -Raw
-          $updatedConfig = $webConfig -replace "<aspNetCore", "<aspNetCore processPath=`"dotnet`" arguments=`".\Uxcheckmate_Main.dll`" stdoutLogEnabled=`"true`" stdoutLogFile=`".\logs\stdout`" hostingModel=`"inprocess`" />`n      <security>`n        <requestFiltering>`n          <requestLimits maxAllowedContentLength=`"1073741824`" />`n        </requestFiltering>`n      </security>`n      <!-- Original aspNetCore element removed"
-          $updatedConfig | Set-Content $webConfigPath
-        shell: pwsh
-        
-      - name: Deploy to Azure
-        uses: azure/webapps-deploy@v2
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          
-      - name: Configure App Settings
-        uses: azure/appservice-settings@v1
-        with:
-          app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          app-settings-json: |
-            [
-              {
-                "name": "PLAYWRIGHT_BROWSERS_PATH",
-                "value": "/home/site/wwwroot/playwright-browsers",
-                "slotSetting": false
-              },
-              {
-                "name": "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD",
-                "value": "0",
-                "slotSetting": false
-              }
-            ]
-          connection-string-json: |
-            [
-              {
-                "name": "DATABASE",
-                "value": "${{ env.DB_STRING_SECRET }}",
-                "type": "SQLAzure",
-                "slotSetting": false
-              }
-            ]
-
