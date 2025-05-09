@@ -56,6 +56,10 @@
   <Content Include="playwright-browsers\**">
     <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
   </Content>
-<Content Include="**/*.cshtml.css" />
+    <None Update="ms-playwright/**;axe-core/**;wwwroot/js/**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </None>
+    <Content Include="Views/Shared/_Layout.cshtml.css" />
   </ItemGroup>  
 </Project>
