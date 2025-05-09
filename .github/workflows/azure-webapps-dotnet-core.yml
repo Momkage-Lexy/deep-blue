@@ -71,7 +71,16 @@ jobs:
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      - name: Include post-deployment script
+      # Step 10: Copy ms-playwright folder into published output
+      - name: Copy ms-playwright to publish output
+        run: |
+          $src = "${{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright"
+          $dest = "${{ github.workspace }}\${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright"
+          Copy-Item -Path $src -Destination $dest -Recurse -Force
+        shell: pwsh
+
+      # Step 11: Verify Chromium binary in publish output
+      - name: Verify headless_shell.exe is in publish folder
         run: |
           $target = "${{ github.workspace }}\${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright\chromium_headless_shell-1169\chrome-win\headless_shell.exe"
           if (!(Test-Path $target)) {
@@ -88,4 +97,3 @@ jobs:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-
