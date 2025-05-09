@@ -9,9 +9,18 @@ $zipPath = "$tempDir\chrome-win.zip"
 
 Write-Host "Downloading Chromium snapshot..."
 New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
-Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath
 
-Write-Host "Extracting headless_shell.exe..."
+# Start download and print dots while waiting
+$job = Start-Job { Invoke-WebRequest -Uri $using:zipUrl -OutFile $using:zipPath }
+$counter = 0
+while ($job.State -eq 'Running') {
+    Write-Host "Downloading... ($counter sec)"
+    Start-Sleep -Seconds 5
+    $counter += 5
+}
+Receive-Job $job
+
+Write-Host "Extracting zip..."
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $tempDir)
 
