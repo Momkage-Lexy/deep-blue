@@ -48,7 +48,15 @@ jobs:
           npm install playwright
           npx playwright install chromium
 
-      - name: Publish .NET project
+      - name: Restore dependencies
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
+        run: dotnet restore
+
+      - name: Build project
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
+        run: dotnet build --configuration Release
+
+      - name: Publish project
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
