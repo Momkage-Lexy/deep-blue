@@ -49,8 +49,11 @@ jobs:
 
       - name: Include post-deployment script
         run: |
-          cp .deployment ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          cp deploy.ps1 ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          if (!(Test-Path "Uxcheckmate/Uxcheckmate_Main/.deployment")) { throw "Missing .deployment" }
+          if (!(Test-Path "Uxcheckmate/Uxcheckmate_Main/deploy.ps1")) { throw "Missing deploy.ps1" }
+          cp Uxcheckmate/Uxcheckmate_Main/.deployment ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          cp Uxcheckmate/Uxcheckmate_Main/deploy.ps1 ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        shell: pwsh
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
