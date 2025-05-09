@@ -1,12 +1,10 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>a542f021-a985-4567-bbd5-92278019d660</UserSecretsId>
-<DefaultItemExcludes>$(DefaultItemExcludes);playwright-browsers\**</DefaultItemExcludes>
-<DisableScopedCssVerification>true</DisableScopedCssVerification>
   </PropertyGroup>
 
   <ItemGroup>
@@ -54,14 +52,6 @@
       <None Update="wwwroot\js\playwrightScraperHelper.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  <Content Include="playwright-browsers\**">
-    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-  </Content>
-    <None Update="ms-playwright/**;axe-core/**;wwwroot/js/**">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </None>
-        <Content Include="Views/Shared/_Layout.cshtml.css" />
-    <Content Include="Views/**/*.cshtml.css" />
   </ItemGroup>  
 </Project>
+
