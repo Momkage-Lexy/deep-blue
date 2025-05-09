@@ -18,51 +18,92 @@
 # For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples
 
 name: Publish 🚀
-
 on:
   workflow_dispatch:
   push:
     branches:
       - deployment
-
 env:
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   AZURE_WEBAPP_PACKAGE_PATH: ./publish
-
 jobs:
   publish:
     runs-on: windows-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
+      
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.x'
-
+      
+      # Install Playwright properly
       - name: Install Playwright
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
-          npm install playwright
-          $env:PLAYWRIGHT_BROWSERS_PATH="$pwd/playwright-browsers"
-          npx playwright install chromium
-          dir ./playwright-browsers
-
+          dotnet tool install --global Microsoft.Playwright.CLI
+          dotnet add package Microsoft.Playwright
+          dotnet build
+          playwright install chromium
+          
+      # Verify the installation location
+      - name: Verify Playwright installation
+        run: |
+          $msPlaywrightPath = "$env:USERPROFILE/.cache/ms-playwright"
+          echo "Checking if ms-playwright exists at: $msPlaywrightPath"
+          if (Test-Path $msPlaywrightPath) {
+            echo "ms-playwright directory exists"
+            Get-ChildItem -Path $msPlaywrightPath -Recurse | Select-Object -First 20
+          } else {
+            echo "ms-playwright directory not found"
+          }
+      
+      # Copy Playwright files to the project
+      - name: Copy Playwright files
+        run: |
+          $sourceDir = "$env:USERPROFILE/.cache/ms-playwright"
+          $targetDir = "./Uxcheckmate/Uxcheckmate_Main/ms-playwright"
+          
+          echo "Creating target directory: $targetDir"
+          New-Item -Path $targetDir -ItemType Directory -Force
+          
+          echo "Copying files from $sourceDir to $targetDir"
+          Copy-Item -Path "$sourceDir/*" -Destination $targetDir -Recurse -Force
+          
+          echo "Verifying files in target directory:"
+          Get-ChildItem -Path $targetDir -Recurse | Select-Object -First 20
+      
+      # Restore, build, and publish
       - name: Restore dependencies
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet restore
-
+      
       - name: Build project
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet build --configuration Release
-
+      
       - name: Publish project
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-
+      
+      # Verify the published output
+      - name: Verify published files
+        run: |
+          echo "Checking published directory structure:"
+          Get-ChildItem -Path "${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}" -Recurse | Select-Object -First 20
+          
+          echo "Checking for ms-playwright directory:"
+          $publishedPlaywrightPath = "${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/ms-playwright"
+          if (Test-Path $publishedPlaywrightPath) {
+            echo "ms-playwright directory exists in publish output"
+            Get-ChildItem -Path $publishedPlaywrightPath -Recurse | Select-Object -First 20
+          } else {
+            echo "ms-playwright directory not found in publish output"
+          }
+      
+      # Deploy to Azure
       - name: Deploy to Azure
         uses: azure/webapps-deploy@v2
         with:
