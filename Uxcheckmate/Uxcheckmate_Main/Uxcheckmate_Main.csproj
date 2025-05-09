@@ -52,7 +52,7 @@
       <None Update="wwwroot\js\playwrightScraperHelper.js">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-  <Content Include="node_modules\playwright-core\.local-browsers\**">
+  <Content Include="playwright-browsers\**">
     <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
   </Content>
   </ItemGroup>  
