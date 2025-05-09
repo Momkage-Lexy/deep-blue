@@ -46,7 +46,9 @@ jobs:
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           npm install playwright
-          npx playwright install --path ./node_modules/playwright-core chromium
+          $env:PLAYWRIGHT_BROWSERS_PATH="$pwd/playwright-browsers"
+          npx playwright install chromium
+          dir ./playwright-browsers
 
       - name: Restore dependencies
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
