@@ -28,13 +28,26 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Playwright (optional)
+      # Install Playwright and Chromium
+      - name: Install Playwright and Chromium
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           npm init -y
           npm install playwright
           npx playwright install chromium
 
+      # Locate downloaded Chromium and copy it into the correct structure
+      - name: Copy Chromium to ms-playwright folder for publish
+        run: |
+          $source = Get-ChildItem "$env:USERPROFILE\AppData\Local\ms-playwright" -Directory | Where-Object { $_.Name -like "chromium-*" } | Select-Object -First 1
+          $sourcePath = Join-Path $source.FullName "chrome-win"
+          $targetPath = "${{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright\chromium_headless_shell-1169\chrome-win"
+          echo "Copying Chromium from $sourcePath to $targetPath"
+          New-Item -ItemType Directory -Force -Path $targetPath | Out-Null
+          Copy-Item -Path "$sourcePath\*" -Destination $targetPath -Recurse -Force
+        shell: pwsh
+
+      # Restore, build, and publish .NET app
       - name: Restore dependencies
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet restore
@@ -47,17 +60,19 @@ jobs:
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
-      - name: Include post-deployment script
+      # Copy ms-playwright folder into the publish output
+      - name: Copy ms-playwright to publish output
         run: |
-          if (!(Test-Path "Uxcheckmate/Uxcheckmate_Main/.deployment")) { throw "Missing .deployment" }
-          if (!(Test-Path "Uxcheckmate/Uxcheckmate_Main/deploy.ps1")) { throw "Missing deploy.ps1" }
-          cp Uxcheckmate/Uxcheckmate_Main/.deployment ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-          cp Uxcheckmate/Uxcheckmate_Main/deploy.ps1 ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          $src = "${{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright"
+          $dest = "${{ github.workspace }}\${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright"
+          echo "Copying $src to $dest"
+          Copy-Item $src -Destination $dest -Recurse -Force
         shell: pwsh
 
-      - name: Deploy to Azure Web App
+      - name: Deploy to Azure
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
           package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
