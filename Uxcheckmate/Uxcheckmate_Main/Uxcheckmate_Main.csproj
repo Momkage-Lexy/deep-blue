@@ -55,7 +55,7 @@
     </None>
   <Content Include="playwright-browsers\**">
     <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-<Content Include="**/*.cshtml.css" />
   </Content>
+<Content Include="**/*.cshtml.css" />
   </ItemGroup>  
 </Project>
