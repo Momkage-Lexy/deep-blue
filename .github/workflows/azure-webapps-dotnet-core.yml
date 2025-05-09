@@ -60,6 +60,7 @@ jobs:
           New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
           Copy-Item -Path "$sourcePath\*" -Destination $targetPath -Recurse -Force
         shell: pwsh
+    
 
       # Step 6: Clean up local Playwright cache to reduce ZIP size
       - name: Clean up ms-playwright cache from user profile
