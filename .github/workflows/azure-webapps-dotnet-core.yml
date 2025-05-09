@@ -39,7 +39,7 @@ jobs:
           npm install playwright
           npx playwright install chromium
 
-      - name: Debug: List contents of Playwright install folder
+      - name: List contents of Playwright install folder
         run: |
           $basePath = "$env:USERPROFILE\AppData\Local\ms-playwright"
           Write-Host "Checking ms-playwright directory: $basePath"
