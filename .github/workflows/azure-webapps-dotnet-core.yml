@@ -1,144 +1,58 @@
-# This workflow will build and push a .NET Core app to an Azure Web App when a commit is pushed to your default branch.
-#
-# This workflow assumes you have already created the target Azure App Service web app.
-# For instructions see https://docs.microsoft.com/en-us/azure/app-service/quickstart-dotnetcore?tabs=net60&pivots=development-environment-vscode
-#
-# To configure this workflow:
-#
-# 1. Download the Publish Profile for your Azure Web App. You can download this file from the Overview page of your Web App in the Azure Portal.
-#    For more information: https://docs.microsoft.com/en-us/azure/app-service/deploy-github-actions?tabs=applevel#generate-deployment-credentials
-#
-# 2. Create a secret in your repository named AZURE_WEBAPP_PUBLISH_PROFILE, paste the publish profile contents as the value of the secret.
-#    For instructions on obtaining the publish profile see: https://docs.microsoft.com/azure/app-service/deploy-github-actions#configure-the-github-secret
-#
-# 3. Change the value for the AZURE_WEBAPP_NAME. Optionally, change the AZURE_WEBAPP_PACKAGE_PATH and DOTNET_VERSION environment variables below.
-#
-# For more information on GitHub Actions for Azure: https://github.com/Azure/Actions
-# For more information on the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# For more samples to get started with GitHub Action workflows to deploy to Azure: https://github.com/Azure/actions-workflow-samples
-
 name: Publish 🚀
+
 on:
   workflow_dispatch:
   push:
     branches:
       - deployment
+
 env:
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
   AZURE_WEBAPP_PACKAGE_PATH: ./publish
+
 jobs:
   publish:
     runs-on: windows-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: '9.0.x'
-      
-      # Install Node.js
+
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          
-      # Install Playwright using npm
-      - name: Install Playwright
+
+      - name: Install Playwright (optional)
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
           npm init -y
           npm install playwright
           npx playwright install chromium
-          
-      # Verify the installation location
-      - name: Verify Playwright installation
-        working-directory: ./Uxcheckmate/Uxcheckmate_Main
-        run: |
-          echo "Checking for Playwright browsers in node_modules"
-          $nodeModulesPath = "./node_modules/playwright"
-          $playwrightBrowsersPath = "./node_modules/playwright/.local-browsers"
-          
-          if (Test-Path $playwrightBrowsersPath) {
-            echo "Playwright browsers directory exists at: $playwrightBrowsersPath"
-            Get-ChildItem -Path $playwrightBrowsersPath -Recurse | Select-Object -First 20
-          } else {
-            echo "Playwright browsers directory not found at expected location"
-            echo "Searching for browser files in node_modules:"
-            Get-ChildItem -Path "./node_modules" -Recurse -Filter "chromium*" | Select-Object -First 20
-          }
-      
-      # Copy Playwright files to the project
-      - name: Copy Playwright files to project
-        run: |
-          $projectRoot = "./Uxcheckmate/Uxcheckmate_Main"
-          $nodeModulesPath = "$projectRoot/node_modules/playwright/.local-browsers"
-          $targetDir = "$projectRoot/ms-playwright"
-          
-          echo "Creating target directory: $targetDir"
-          New-Item -Path $targetDir -ItemType Directory -Force
-          
-          echo "Copying files from $nodeModulesPath to $targetDir"
-          if (Test-Path $nodeModulesPath) {
-            Copy-Item -Path "$nodeModulesPath/*" -Destination $targetDir -Recurse -Force
-          } else {
-            echo "ERROR: Playwright browsers directory not found at $nodeModulesPath"
-            echo "Searching for browser files:"
-            Get-ChildItem -Path "$projectRoot/node_modules" -Recurse -Filter "chromium*" | ForEach-Object {
-              $parentDir = Split-Path -Parent $_.FullName
-              echo "Found browser files at: $parentDir"
-              Copy-Item -Path "$parentDir/*" -Destination $targetDir -Recurse -Force
-            }
-          }
-          
-          echo "Verifying files in target directory:"
-          Get-ChildItem -Path $targetDir -Recurse | Select-Object -First 20
-      
-      # Restore, build, and publish
+
       - name: Restore dependencies
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet restore
-      
+
       - name: Build project
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: dotnet build --configuration Release
-      
+
       - name: Publish project
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
+        run: dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Include post-deployment script
         run: |
-          dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-      
-      # Verify the published output
-      - name: Verify published files
-        run: |
-          echo "Checking published directory structure:"
-          Get-ChildItem -Path "${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}" -Recurse | Select-Object -First 20
-          
-          echo "Checking for ms-playwright directory:"
-          $publishedPlaywrightPath = "${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/ms-playwright"
-          if (Test-Path $publishedPlaywrightPath) {
-            echo "ms-playwright directory exists in publish output"
-            Get-ChildItem -Path $publishedPlaywrightPath -Recurse | Select-Object -First 20
-            
-            echo "Searching specifically for headless_shell.exe:"
-            $headlessShellFiles = Get-ChildItem -Path $publishedPlaywrightPath -Recurse -Filter "headless_shell.exe"
-            if ($headlessShellFiles.Count -gt 0) {
-              echo "Found headless_shell.exe files:"
-              $headlessShellFiles | ForEach-Object { echo $_.FullName }
-            } else {
-              echo "WARNING: headless_shell.exe not found in published output!"
-            }
-          } else {
-            echo "WARNING: ms-playwright directory not found in published output"
-          }
-          
-          # Additional check for browser files anywhere in the publish directory
-          echo "Searching for browser files in entire publish directory:"
-          Get-ChildItem -Path "${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}" -Recurse -Filter "chromium*" | Select-Object -First 10
-      
-      # Deploy to Azure
-      - name: Deploy to Azure
+          cp .deployment ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+          cp deploy.ps1 ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
