@@ -44,7 +44,7 @@
   <!-- Include Playwright browser files in the publish output -->
   <ItemGroup>
     <!-- Copy all ms-playwright files -->
-    <Content Include="ms-playwright/**" CopyToPublishDirectory="PreserveNewest" />
+
     
     <!-- Include axe-core files -->
     <Content Include="axe-core/axe.min.js" CopyToPublishDirectory="PreserveNewest" />
