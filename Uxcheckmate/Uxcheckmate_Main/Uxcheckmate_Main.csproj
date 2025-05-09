@@ -49,8 +49,8 @@
     <!-- Include axe-core files -->
     <Content Include="axe-core/axe.min.js" CopyToPublishDirectory="PreserveNewest" />
     
-    <!-- Include js helper files -->
-    <Content Include="wwwroot\js\playwrightScraperHelper.js" CopyToPublishDirectory="PreserveNewest" />
+    <!-- Don't explicitly include wwwroot files as they're included by default -->
+    <!-- The wwwroot\js\playwrightScraperHelper.js file will be included automatically -->
   </ItemGroup>
 </Project>
 
