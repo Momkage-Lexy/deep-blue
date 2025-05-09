@@ -39,6 +39,17 @@ jobs:
           npm install playwright
           npx playwright install chromium
 
+      - name: Debug: List contents of Playwright install folder
+        run: |
+          $basePath = "$env:USERPROFILE\AppData\Local\ms-playwright"
+          Write-Host "Checking ms-playwright directory: $basePath"
+          if (Test-Path $basePath) {
+            Get-ChildItem -Path $basePath -Recurse | Select-Object FullName
+          } else {
+            Write-Host "❌ ms-playwright folder not found."
+          }
+        shell: pwsh
+
       # Step 5: Copy Chromium from user cache into the project directory
       - name: Copy Chromium to ms-playwright folder
         run: |
