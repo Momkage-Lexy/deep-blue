@@ -38,38 +38,59 @@ jobs:
         with:
           dotnet-version: '9.0.x'
       
-      # Install Playwright properly
+      # Install Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          
+      # Install Playwright using npm
       - name: Install Playwright
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
-          dotnet tool install --global Microsoft.Playwright.CLI
-          dotnet add package Microsoft.Playwright
-          dotnet build
-          playwright install chromium
+          npm init -y
+          npm install playwright
+          npx playwright install chromium
           
       # Verify the installation location
       - name: Verify Playwright installation
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
         run: |
-          $msPlaywrightPath = "$env:USERPROFILE/.cache/ms-playwright"
-          echo "Checking if ms-playwright exists at: $msPlaywrightPath"
-          if (Test-Path $msPlaywrightPath) {
-            echo "ms-playwright directory exists"
-            Get-ChildItem -Path $msPlaywrightPath -Recurse | Select-Object -First 20
+          echo "Checking for Playwright browsers in node_modules"
+          $nodeModulesPath = "./node_modules/playwright"
+          $playwrightBrowsersPath = "./node_modules/playwright/.local-browsers"
+          
+          if (Test-Path $playwrightBrowsersPath) {
+            echo "Playwright browsers directory exists at: $playwrightBrowsersPath"
+            Get-ChildItem -Path $playwrightBrowsersPath -Recurse | Select-Object -First 20
           } else {
-            echo "ms-playwright directory not found"
+            echo "Playwright browsers directory not found at expected location"
+            echo "Searching for browser files in node_modules:"
+            Get-ChildItem -Path "./node_modules" -Recurse -Filter "chromium*" | Select-Object -First 20
           }
       
       # Copy Playwright files to the project
-      - name: Copy Playwright files
+      - name: Copy Playwright files to project
         run: |
-          $sourceDir = "$env:USERPROFILE/.cache/ms-playwright"
-          $targetDir = "./Uxcheckmate/Uxcheckmate_Main/ms-playwright"
+          $projectRoot = "./Uxcheckmate/Uxcheckmate_Main"
+          $nodeModulesPath = "$projectRoot/node_modules/playwright/.local-browsers"
+          $targetDir = "$projectRoot/ms-playwright"
           
           echo "Creating target directory: $targetDir"
           New-Item -Path $targetDir -ItemType Directory -Force
           
-          echo "Copying files from $sourceDir to $targetDir"
-          Copy-Item -Path "$sourceDir/*" -Destination $targetDir -Recurse -Force
+          echo "Copying files from $nodeModulesPath to $targetDir"
+          if (Test-Path $nodeModulesPath) {
+            Copy-Item -Path "$nodeModulesPath/*" -Destination $targetDir -Recurse -Force
+          } else {
+            echo "ERROR: Playwright browsers directory not found at $nodeModulesPath"
+            echo "Searching for browser files:"
+            Get-ChildItem -Path "$projectRoot/node_modules" -Recurse -Filter "chromium*" | ForEach-Object {
+              $parentDir = Split-Path -Parent $_.FullName
+              echo "Found browser files at: $parentDir"
+              Copy-Item -Path "$parentDir/*" -Destination $targetDir -Recurse -Force
+            }
+          }
           
           echo "Verifying files in target directory:"
           Get-ChildItem -Path $targetDir -Recurse | Select-Object -First 20
@@ -99,9 +120,22 @@ jobs:
           if (Test-Path $publishedPlaywrightPath) {
             echo "ms-playwright directory exists in publish output"
             Get-ChildItem -Path $publishedPlaywrightPath -Recurse | Select-Object -First 20
+            
+            echo "Searching specifically for headless_shell.exe:"
+            $headlessShellFiles = Get-ChildItem -Path $publishedPlaywrightPath -Recurse -Filter "headless_shell.exe"
+            if ($headlessShellFiles.Count -gt 0) {
+              echo "Found headless_shell.exe files:"
+              $headlessShellFiles | ForEach-Object { echo $_.FullName }
+            } else {
+              echo "WARNING: headless_shell.exe not found in published output!"
+            }
           } else {
-            echo "ms-playwright directory not found in publish output"
+            echo "WARNING: ms-playwright directory not found in published output"
           }
+          
+          # Additional check for browser files anywhere in the publish directory
+          echo "Searching for browser files in entire publish directory:"
+          Get-ChildItem -Path "${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}" -Recurse -Filter "chromium*" | Select-Object -First 10
       
       # Deploy to Azure
       - name: Deploy to Azure
