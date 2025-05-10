@@ -36,36 +36,36 @@ jobs:
           PLAYWRIGHT_BROWSERS_PATH: 0
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
       
-      # - name: Create ms-playwright directory
-      #   run: |
-      #     New-Item -ItemType Directory -Path "\Uxcheckmate\Uxcheckmate_Main\ms-playwright" -Force
-      #   shell: pwsh
-      
-      # - name: Copy Playwright Browsers
-      #   run: |
-      #     $sourceDir = Get-ChildItem "$env:USERPROFILE\AppData\Local\ms-playwright" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "chromium-*" } | Select-Object -First 1
+      - name: Create ms-playwright directory
+        run: |
+          New-Item -ItemType Directory -Path "${{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright" -Force
+        shell: pwsh
+
+      - name: Copy Playwright Browsers
+        run: |
+          $sourceDir = Get-ChildItem "$env:USERPROFILE\AppData\Local\ms-playwright" -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like "chromium-*" } | Select-Object -First 1
           
-      #     if ($null -eq $sourceDir) {
-      #       Write-Host "ERROR: Could not find Chromium installation directory!"
-      #       exit 1
-      #     }
+          if ($null -eq $sourceDir) {
+            Write-Host "ERROR: Could not find Chromium installation directory!"
+            exit 1
+          }
           
-      #     $sourcePath = Join-Path $sourceDir.FullName "*"
-      #     $destPath = "\Uxcheckmate\Uxcheckmate_Main\ms-playwright\$($sourceDir.Name)"
+          $sourcePath = Join-Path $sourceDir.FullName "*"
+          $destPath = "${{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright\$($sourceDir.Name)"
           
-      #     Write-Host "Copying from $sourcePath to $destPath"
-      #     New-Item -ItemType Directory -Path $destPath -Force | Out-Null
-      #     Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
+          Write-Host "Copying from $sourcePath to $destPath"
+          New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+          Copy-Item -Path $sourcePath -Destination $destPath -Recurse -Force
           
-      #     # Verify browser files were copied
-      #     $browserFiles = Get-ChildItem $destPath -Recurse | Measure-Object
-      #     Write-Host "Copied $($browserFiles.Count) files"
+          # Verify browser files were copied
+          $browserFiles = Get-ChildItem $destPath -Recurse | Measure-Object
+          Write-Host "Copied $($browserFiles.Count) files"
           
-      #     # List important files
-      #     Get-ChildItem $destPath -Recurse -Include "*.exe" | ForEach-Object {
-      #       Write-Host "Found executable: $($_.FullName)"
-      #     }
-      #   shell: pwsh
+          # List important files
+          Get-ChildItem $destPath -Recurse -Include "*.exe" | ForEach-Object {
+            Write-Host "Found executable: $($_.FullName)"
+          }
+        shell: pwsh
       
       - name: Restore .NET dependencies
         run: dotnet restore
@@ -79,33 +79,33 @@ jobs:
         run: dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
       
-      # - name: Copy ms-playwright to publish output
-      #   run: |
-      #     $src = "{{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright"
-      #     $dest = "{{ github.workspace }}\{{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright"
+      - name: Copy ms-playwright to publish output
+        run: |
+          $src = "${{ github.workspace }}\Uxcheckmate\Uxcheckmate_Main\ms-playwright"
+          $dest = "${{ github.workspace }}\${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright"
           
-      #     if (Test-Path $src) {
-      #       Write-Host "Copying ms-playwright from $src to $dest"
-      #       Copy-Item -Path $src -Destination $dest -Recurse -Force
+          if (Test-Path $src) {
+            Write-Host "Copying ms-playwright from $src to $dest"
+            Copy-Item -Path $src -Destination $dest -Recurse -Force
             
-      #       # Verify files were copied
-      #       if (Test-Path $dest) {
-      #         $fileCount = (Get-ChildItem $dest -Recurse | Measure-Object).Count
-      #         Write-Host "Copied $fileCount files to publish directory"
-      #       } else {
-      #         Write-Host "ERROR: Destination directory not created!"
-      #       }
-      #     } else {
-      #       Write-Host "ERROR: Source directory $src does not exist!"
-      #       exit 1
-      #     }
-      #   shell: pwsh
+            # Verify files were copied
+            if (Test-Path $dest) {
+              $fileCount = (Get-ChildItem $dest -Recurse | Measure-Object).Count
+              Write-Host "Copied $fileCount files to publish directory"
+            } else {
+              Write-Host "ERROR: Destination directory not created!"
+            }
+          } else {
+            Write-Host "ERROR: Source directory $src does not exist!"
+            exit 1
+          }
+        shell: pwsh
       
-      # - name: List browser files in publish directory
-      #   run: |
-      #     Write-Host "Listing browser files in publish directory:"
-      #     Get-ChildItem "{{ github.workspace }}\{{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright" -Recurse | Select-Object FullName
-      #   shell: pwsh
+      - name: List browser files in publish directory
+        run: |
+          Write-Host "Listing browser files in publish directory:"
+          Get-ChildItem "${{ github.workspace }}\${{ env.AZURE_WEBAPP_PACKAGE_PATH }}\ms-playwright" -Recurse | Select-Object FullName
+        shell: pwsh
       
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
