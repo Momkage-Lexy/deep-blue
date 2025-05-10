@@ -31,7 +31,7 @@ jobs:
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
       
       - name: Install Playwright Browsers
-        run: npx playwright install
+        run: npx playwright install --with-deps
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
       
       - name: Create ms-playwright directory
