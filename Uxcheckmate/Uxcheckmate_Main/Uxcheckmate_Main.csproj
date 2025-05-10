@@ -45,7 +45,7 @@
   <ItemGroup>
     <!-- Copy all ms-playwright files -->
 
-    
+     
     <!-- Include axe-core files -->
     <Content Include="axe-core/axe.min.js" CopyToPublishDirectory="PreserveNewest" />
     <None Include=".playwright\**\*" CopyToPublishDirectory="PreserveNewest" />
