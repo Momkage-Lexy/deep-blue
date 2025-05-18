@@ -14,8 +14,7 @@ namespace Uxcheckmate_Main.Services
         // Calling the PlaywrightService to get the browser context
         private readonly IPlaywrightApiService _playwrightApiService;
 
-        public ScreenshotService(ILogger<ScreenshotService> logger,
-            IPlaywrightApiService playwrightApiService)
+        public ScreenshotService(ILogger<ScreenshotService> logger, IPlaywrightApiService playwrightApiService)
         {
             _logger = logger;
             _playwrightApiService = playwrightApiService;
@@ -23,8 +22,9 @@ namespace Uxcheckmate_Main.Services
 
         // PageScreenshotOptions is a class in Playwright that allows you to specify options for taking a screenshot of a page.
         // The options include the full page, the quality of the image, the type of image, and the path to save the image.
-        public async Task<string> CaptureScreenshot(PageScreenshotOptions options, string url, CancellationToken cancellationToken = default)
+        public async Task<string> CaptureScreenshot(PageScreenshotOptions screenshotOptions, string url, CancellationToken cancellationToken = default)
         {
+            // Check if the URL is empty or null
             if (string.IsNullOrWhiteSpace(url))
             {
                 _logger.LogError("URL cannot be empty.");
@@ -34,6 +34,8 @@ namespace Uxcheckmate_Main.Services
             try
             {
                 _logger.LogInformation("Capturing standard viewport screenshot of {Url}", url);
+                
+                // Api call for screenshot
                 var result = await _playwrightApiService.AnalyzeWebsiteAsync(url, fullPage: false);
 
                 if (string.IsNullOrEmpty(result?.ScreenshotBase64))
@@ -46,7 +48,7 @@ namespace Uxcheckmate_Main.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to capture viewport screenshot of {Url}", url);
+                _logger.LogError(ex, "Failed to capture screenshot.");
                 return string.Empty;
             }
         }
@@ -62,6 +64,8 @@ namespace Uxcheckmate_Main.Services
             try
             {
                 _logger.LogInformation("Capturing full-page screenshot of {Url}", url);
+
+                // Api call for screenshot
                 var result = await _playwrightApiService.AnalyzeWebsiteAsync(url, fullPage: true);
 
                 if (result?.ScreenshotBase64 == null)
@@ -79,6 +83,5 @@ namespace Uxcheckmate_Main.Services
                 return Array.Empty<byte>();
             }
         }
-
     }
 }
