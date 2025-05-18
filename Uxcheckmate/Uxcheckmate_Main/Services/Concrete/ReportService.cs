@@ -25,7 +25,6 @@ namespace Uxcheckmate_Main.Services
         private readonly IMobileResponsivenessService _mobileResponsivenessService;
       //  private readonly IWebScraperService _scraperService;
         private readonly IScreenshotService _screenshotService;
-        private readonly IPlaywrightScraperService _playwrightScraperService;
         private readonly IPopUpsService _popUpsService;
         private readonly IAnimationService _animationService;
         private readonly IAudioService _audioService;
@@ -37,9 +36,7 @@ namespace Uxcheckmate_Main.Services
         private readonly IMemoryCache _cache;
         private readonly IPlaywrightApiService _playwrightApiService;
 
-        public ReportService(HttpClient httpClient, ILogger<ReportService> logger, UxCheckmateDbContext context, IOpenAiService openAiService, IBrokenLinksService brokenLinksService, IHeadingHierarchyService headingHierarchyService, IColorSchemeService colorSchemeService, IMobileResponsivenessService mobileResponsivenessService, IScreenshotService screenshotService, IPlaywrightScraperService playwrightScraperService, IPopUpsService popUpsService, IAnimationService animationService, IAudioService audioService, IScrollService scrollService, IFPatternService fPatternService, IZPatternService zPatternService, ISymmetryService symmetryService, IServiceScopeFactory scopeFactory,
-    IMemoryCache cache,
-            IPlaywrightApiService playwrightApiService)
+        public ReportService(HttpClient httpClient, ILogger<ReportService> logger, UxCheckmateDbContext context, IOpenAiService openAiService, IBrokenLinksService brokenLinksService, IHeadingHierarchyService headingHierarchyService, IColorSchemeService colorSchemeService, IMobileResponsivenessService mobileResponsivenessService, IScreenshotService screenshotService, IPopUpsService popUpsService, IAnimationService animationService, IAudioService audioService, IScrollService scrollService, IFPatternService fPatternService, IZPatternService zPatternService, ISymmetryService symmetryService, IServiceScopeFactory scopeFactory, IMemoryCache cache, IPlaywrightApiService playwrightApiService)
         {
             _httpClient = httpClient;
             _dbContext = context;
@@ -50,8 +47,6 @@ namespace Uxcheckmate_Main.Services
             _colorSchemeService = colorSchemeService;
             _mobileResponsivenessService = mobileResponsivenessService;
             _screenshotService = screenshotService;
-            //  _scraperService = scraperService;
-            _playwrightScraperService = playwrightScraperService;
             _popUpsService = popUpsService;
             _animationService = animationService;
             _audioService = audioService;
@@ -92,7 +87,11 @@ namespace Uxcheckmate_Main.Services
                 if (!_cache.TryGetValue(cacheKey, out fullScraped))
                 {
                     _logger.LogInformation("No cached scrape found for {Url}. Scraping now.", url);
+
+                    // Call api to begin scraping
                     var result = await _playwrightApiService.AnalyzeWebsiteAsync(url);
+
+                    // Map to scraped content
                     fullScraped = new ScrapedContent
                     {
                         Url = url,
@@ -123,7 +122,6 @@ namespace Uxcheckmate_Main.Services
                         Links = result?.Links ?? new List<string>(),
                         LayoutElements = result?.LayoutElements ?? new List<HtmlElement>()
                     };
-
 
                     // Cache it for 1 hour
                     _cache.Set(cacheKey, fullScraped, TimeSpan.FromHours(1));
@@ -232,7 +230,7 @@ namespace Uxcheckmate_Main.Services
                 });
             /* SAVE TOKENS COMMENT OUT OPEN AI */
 
-          /*  try
+            try
             {
                 var summaryText = await _openAiService.GenerateReportSummaryAsync(scanResults.ToList(), fullScraped.HtmlContent, url, cancellationToken);
                 report.Summary = summaryText;
@@ -245,7 +243,7 @@ namespace Uxcheckmate_Main.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate summary.");
-            }*/
+            }
 
             try
             {
@@ -321,7 +319,7 @@ namespace Uxcheckmate_Main.Services
             /* SAVE TOKENS COMMENT OUT OPEN AI */
 
             // Send to OpenAI to enhance message
-           /* if (!string.IsNullOrEmpty(message))
+            if (!string.IsNullOrEmpty(message))
             {
                 _logger.LogInformation("Improving message with OpenAI for category: {CategoryName}", categoryName);
                 message = await _openAiService.ImproveMessageAsync(message, categoryName);
@@ -329,7 +327,7 @@ namespace Uxcheckmate_Main.Services
             else
             {
                 _logger.LogInformation("No message to improve for category: {CategoryName}", categoryName);
-            }*/
+            }
 
             return message;
         }
