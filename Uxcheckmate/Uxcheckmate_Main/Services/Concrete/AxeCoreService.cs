@@ -22,7 +22,7 @@ namespace Uxcheckmate_Main.Services
             _playwrightApiService = playwrightApiService;
         }
 
-        public async Task<ICollection<AccessibilityIssue>> AnalyzeAndSaveAccessibilityReport(Report report, CancellationToken cancellationToken = default)
+        public virtual async Task<ICollection<AccessibilityIssue>> AnalyzeAndSaveAccessibilityReport(Report report, CancellationToken cancellationToken = default)
         {
             var issues = new List<AccessibilityIssue>();
 
@@ -41,7 +41,7 @@ namespace Uxcheckmate_Main.Services
 
                 _logger.LogInformation("Found {Count} accessibility violations for {Url}.", result.AxeResults.Violations.Count, report.Url);
 
-                // Get fallback category
+                // Ensure that the default "Other" category exists
                 var defaultCategory = _dbContext.AccessibilityCategories.FirstOrDefault(c => c.Name == "Other");
                 if (defaultCategory == null)
                 {
@@ -49,7 +49,7 @@ namespace Uxcheckmate_Main.Services
                     return issues;
                 }
 
-                // Process violations into your DB model
+                // Process each accessibility violation and create issue records
                 foreach (var violation in result.AxeResults.Violations)
                 {
                     foreach (var node in violation.Nodes ?? new List<AxeNode>())
@@ -80,17 +80,9 @@ namespace Uxcheckmate_Main.Services
                     }
                 }
 
-                // Save to DB only if logged in
-                if (!string.IsNullOrEmpty(report.UserID))
-                {
-                    _dbContext.AccessibilityIssues.AddRange(issues);
-                    await _dbContext.SaveChangesAsync(cancellationToken);
-                    _logger.LogInformation("Saved {Count} accessibility issues to the database.", issues.Count);
-                }
-                else
-                {
-                    _logger.LogInformation("Anonymous scan. Issues generated but not saved to DB.");
-                }
+                _dbContext.AccessibilityIssues.AddRange(issues);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                _logger.LogInformation("Saved {Count} accessibility issues to the database.", issues.Count);
             }
             catch (Exception ex)
             {
@@ -100,15 +92,6 @@ namespace Uxcheckmate_Main.Services
             return issues;
         }
 
-        protected int DetermineSeverity(string? impact) => impact switch
-        {
-            "critical" => 4,
-            "serious" => 3,
-            "moderate" => 2,
-            _ => 1
-        };
-
-        // Reuse your existing mapping
         protected static readonly Dictionary<string, string> AccessibilityCategoryMapping = new()
         {
             { "color-contrast", "Color & Contrast" },
@@ -129,5 +112,17 @@ namespace Uxcheckmate_Main.Services
             { "aria-allowed-attr", "ARIA & Semantic HTML" },
             { "aria-hidden-focus", "ARIA & Semantic HTML" }
         };
+
+        protected int DetermineSeverity(string impact)
+        {
+            return impact switch
+            {
+                "critical" => 4,
+                "serious" => 3,
+                "moderate" => 2,
+                _ => 1
+
+            };
+        }
     }
 }
