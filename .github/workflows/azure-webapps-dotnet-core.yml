@@ -29,7 +29,6 @@ jobs:
           npm install playwright
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
 
-
       - name: Restore .NET dependencies
         run: dotnet restore
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
@@ -47,3 +46,4 @@ jobs:
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
