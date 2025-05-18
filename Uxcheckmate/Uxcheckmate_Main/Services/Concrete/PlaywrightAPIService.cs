@@ -19,27 +19,39 @@ namespace Uxcheckmate_Main.Services
             _playwrightServiceUrl = configuration["PlaywrightServiceUrl"];
         }
 
+        // Sends a POST request to the Playwright service to analyze a website
         public async Task<PlaywrightAnalysisResult?> AnalyzeWebsiteAsync(string url, bool fullPage = false)
         {
+            // Construct the request body with the target URL and optional fullPage flag
             var requestBody = new
             {
                 url = url,
-                fullPage = fullPage 
+                fullPage = fullPage
             };
 
+            // Serialize the request body to JSON
             var json = JsonSerializer.Serialize(requestBody);
+
+            // Create the HTTP request content using UTF-8 encoding and JSON MIME type
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
+            // Send a POST request to the /analyze endpoint of the Playwright service
             var response = await _httpClient.PostAsync($"{_playwrightServiceUrl}/analyze", content);
+
+            // If the request failed, return null
             if (!response.IsSuccessStatusCode)
                 return null;
 
+            // Read the JSON response content as a string
             var responseContent = await response.Content.ReadAsStringAsync();
+
+            // Deserialize the JSON response to a strongly typed result model
             var result = JsonSerializer.Deserialize<PlaywrightAnalysisResult>(responseContent, new JsonSerializerOptions
             {
-                PropertyNameCaseInsensitive = true
+                PropertyNameCaseInsensitive = true // Allow flexible casing in JSON keys
             });
 
+            // Return the deserialized analysis result
             return result;
         }
     }
