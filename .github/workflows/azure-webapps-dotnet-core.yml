@@ -29,22 +29,21 @@ jobs:
           npm install playwright
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
 
+
       - name: Restore .NET dependencies
-        run: dotnet restore ./Uxcheckmate/Uxcheckmate.sln
-
-      - name: Build project
-        run: dotnet build ./Uxcheckmate/Uxcheckmate.sln --configuration Release --no-restore
-
-      - name: Publish project
-        run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}'
+        run: dotnet restore
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
       
-      - name: Create deployment marker file
-        run: |
-          echo "Deployment built on $(date)" > ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/deployment-test.txt
+      - name: Build project
+        run: dotnet build --configuration Release
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
+      
+      - name: Publish project
+        run: dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+        working-directory: ./Uxcheckmate/Uxcheckmate_Main
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
