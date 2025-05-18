@@ -7,7 +7,6 @@ namespace Uxcheckmate_Main.Models
     {
         public string Url { get; set; }
         public string HtmlContent { get; set; }
-
         public int Headings { get; set; }
         public int Paragraphs { get; set; }
         public int Images { get; set; }

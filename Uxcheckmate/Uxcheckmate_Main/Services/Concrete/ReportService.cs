@@ -97,13 +97,9 @@ namespace Uxcheckmate_Main.Services
                         Url = url,
                         HtmlContent = result?.Html,
                         TextContent = result?.TextContent,
-                        Headings = result?.AxeResults?.Violations?.Count ?? 0,
-                        Paragraphs = 0, 
-                        Fonts = result?.AxeResults?.Violations?
-                            .Where(v => v.Id == "font-usage") // Or however you track fonts
-                            .SelectMany(v => v.Nodes.Select(n => n.Html))
-                            .ToList() ?? new List<string>(),
-
+                        Headings = result.Headings,
+                        Paragraphs = result.Paragraphs,
+                        Fonts = result?.Fonts ?? new List<string>(),
                         HasFavicon = result?.HasFavicon ?? false,
                         FaviconUrl = result?.FaviconUrl,
                         ExternalCssContents = result?.ExternalCssContents ?? new List<string>(),

@@ -48,16 +48,14 @@ namespace Uxcheckmate_Main.Services
     {
         public string? Url { get; set; }
         public string? ScreenshotBase64 { get; set; }
-        public string? Html { get; set; }
+        public string Html { get; set; }
+        public int Headings { get; set; }
+        public int Paragraphs { get; set; }
         public string? TextContent { get; set; }
-
         public List<string> Fonts { get; set; } = new();
-
-        public AxeResults? AxeResults { get; set; }
-
+        public AxeCoreResults? AxeResults { get; set; }
         public bool HasFavicon { get; set; }
         public string? FaviconUrl { get; set; }
-
         public List<string> ExternalCssContents { get; set; } = new();
         public List<string> ExternalJsContents { get; set; } = new();
         public List<string> InlineCssList { get; set; } = new();
@@ -65,7 +63,6 @@ namespace Uxcheckmate_Main.Services
         public List<string> ExternalCssLinks { get; set; } = new();
         public List<string> ExternalJsLinks { get; set; } = new();
         public List<string> Links { get; set; } = new();
-
         public int ScrollHeight { get; set; }
         public int ScrollWidth { get; set; }
         public int ViewportHeight { get; set; }
@@ -73,27 +70,5 @@ namespace Uxcheckmate_Main.Services
         public string? ViewportLabel { get; set; }
         public List<HtmlElement> LayoutElements { get; set; } = new();
 
-}
-
-
-    public class AxeResults
-    {
-        public List<AxeViolation>? Violations { get; set; }
-    }
-
-    public class AxeViolation
-    {
-        public string? Id { get; set; }
-        public string? Impact { get; set; }
-        public string? Help { get; set; }
-        public string? Description { get; set; }
-        public List<AxeNode>? Nodes { get; set; }
-    }
-
-    public class AxeNode
-    {
-        public List<string>? Target { get; set; }
-        public string? Html { get; set; }
-        public string? FailureSummary { get; set; }
     }
 }
