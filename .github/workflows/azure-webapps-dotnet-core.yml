@@ -8,11 +8,12 @@ on:
 
 env:
   AZURE_WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
-  AZURE_WEBAPP_PACKAGE_PATH: ./publish
+  AZURE_WEBAPP_PACKAGE_PATH: "/home/site/wwwroot"
+  DB_STRING_SECRET: ${{ secrets.DBCONNECTION }}
 
 jobs:
   publish:
-    runs-on: ubuntu-latest  # ✅ Build on Linux for Playwright consistency
+    runs-on: ubuntu-latest 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -22,32 +23,24 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-
       - name: Install Playwright
         run: |
           npm init -y
           npm install playwright
         working-directory: ./Uxcheckmate/Uxcheckmate_Main
 
-      - name: Install Playwright Browsers locally
-        run: npx playwright install --with-deps
-        working-directory: ./Uxcheckmate/Uxcheckmate_Main
-
       - name: Restore .NET dependencies
-        run: dotnet restore
-        working-directory: ./Uxcheckmate/Uxcheckmate_Main
+        run: dotnet restore ./Uxcheckmate/Uxcheckmate.sln
 
       - name: Build project
-        run: dotnet build --configuration Release
-        working-directory: ./Uxcheckmate/Uxcheckmate_Main
+        run: dotnet build ./Uxcheckmate/Uxcheckmate.sln --configuration Release --no-restore
 
       - name: Publish project
-        run: dotnet publish --configuration Release --output ${{ github.workspace }}/${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
-        working-directory: ./Uxcheckmate/Uxcheckmate_Main
+        run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}'
+      
+      - name: Create deployment marker file
+        run: |
+          echo "Deployment built on $(date)" > ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/deployment-test.txt
 
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v2
