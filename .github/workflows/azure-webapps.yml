@@ -1,0 +1,53 @@
+name: Publish 🚀
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+env:
+  AZURE_WEBAPP_NAME: DBUxCheckmateMain
+  AZURE_WEBAPP_PACKAGE_PATH: "/home/site/wwwroot"
+  DB_STRING_SECRET: ${{ secrets.DB_STRING_SECRET }}
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore ./Uxcheckmate/Uxcheckmate.sln
+
+      - name: Build
+        run: dotnet build ./Uxcheckmate/Uxcheckmate.sln --configuration Release --no-restore
+
+      - name: Run Tests
+        run: dotnet test ./Uxcheckmate/Uxcheckmate_Tests/Uxcheckmate_Tests.csproj --configuration Release
+
+      - name: Clear previous publish output
+        run: rm -rf ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+      - name: Publish App
+        run: dotnet publish ./Uxcheckmate/Uxcheckmate_Main/Uxcheckmate_Main.csproj --configuration Release --output '${{ env.AZURE_WEBAPP_PACKAGE_PATH }}'
+
+      - name: Create deployment marker file
+        run: |
+          echo "Deployment built on $(date)" > ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}/deployment-test.txt
+
+      - name: Deploy to Azure Web App
+        uses: azure/webapps-deploy@v2
+        with:
+          app-name: ${{ env.AZURE_WEBAPP_NAME }}
+          publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
+          package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}

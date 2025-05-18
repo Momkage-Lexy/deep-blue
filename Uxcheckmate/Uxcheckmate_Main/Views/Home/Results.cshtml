@@ -1,6 +1,7 @@
 @model Uxcheckmate_Main.Models.Report
 @{
     var websiteScreenshot  = TempData["WebsiteScreenshot"] as string;
+    var userIsAuthenticated = User.Identity.IsAuthenticated;
 }
 @*
 ============================================================================================
@@ -8,7 +9,7 @@
 ============================================================================================
 *@
 <!-- Auto-launch Modal -->
-<div class="modal fade" id="onLoadModal" tabindex="-1" aria-labelledby="onLoadModalLabel" aria-hidden="true">
+@*<div class="modal fade" id="onLoadModal" tabindex="-1" aria-labelledby="onLoadModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content shadow-lg rounded-4">
       <div class="modal-header">
@@ -26,12 +27,13 @@
     </div>
   </div>
 </div>
-
-
+*@
 <div class="container">
     <div class="row headerRow">
         <div class="col-md-6">
-            <img id="screenshotImage" src="@websiteScreenshot " alt="Website Screenshot" class="img-fluid" />
+           @* <img id="screenshotImage" src="@websiteScreenshot " alt="Website Screenshot" class="img-fluid" />*@
+            <img src="data:image/png;base64,@TempData["WebsiteScreenshot"]"id="screenshotImage" class="img-fluid" alt="Website Screenshot">
+
         </div>
         <div class="col-md-6">
             @* Display the URL associated with the report *@
@@ -41,9 +43,7 @@
         </div>
     </div>
 
-
 <br>
-
 
 <div id="reportContainer">
     <div class="row sortSelectRow">
@@ -58,40 +58,32 @@
         </div>
     </div>
 
-
 @*
 ============================================================================================
                                     Design Issues
 ============================================================================================
 *@
-    <div class="row designRow">
-        <div class="report-section mb-5">
-            <h3 class="section-header mb-4">Design Issues</h3>
+<div class="row designRow position-relative">
+    <div class="report-section mb-5">
+        <h3 class="section-header mb-4">Design Issues</h3>
 
+        <!-- FULL ROW OVERLAY -->
+        <div id="designIssuesOverlay" class="overlay">
+            <div class="spinner-grow text-light" role="status"></div>
+        </div>
 
-<div class="position-relative" id="designIssuesWrapper">
-    <div id="designIssuesOverlay" class="overlay">
-        <div class="spinner-border text-light" role="status"></div>
-        <p class="text-light mt-3">Analyzing Design Issues...</p>
-    </div>
-
-
-    <div id="designIssuesContainer">
-
-
-            @await Html.PartialAsync("_DesignIssuesPartial", Model.DesignIssues)
-
+        <!-- ISSUES CONTENT -->
+        <div id="designIssuesWrapper">
+            <div id="designIssuesContainer">
+                @await Html.PartialAsync("_DesignIssuesPartial", Model.DesignIssues)
+            </div>
+        </div>
 
     </div>
 </div>
 
 
-        </div>
-    </div>
-
-
 <br>
-
 
 @*
 ============================================================================================
@@ -103,26 +95,35 @@
             <h3 class="section-header mb-4">Accessibility Issues</h3>
             <div id="accessibilityIssuesContainer">
                 @* Partial view rendering accessibility issues *@
-<div id="accessibilityIssuesContainer">
-    @if (Model.AccessibilityIssues == null || !Model.AccessibilityIssues.Any())
-    {
-        <div class="alert alert-primary" role="alert">
-            <strong>Way to go! Your site is WCAG-approved and accessible to all.</strong>
-        </div>
-    }
-    else
-    {
-        @await Html.PartialAsync("_AccessibilityIssuesPartial", Model.AccessibilityIssues)
-    }
-</div>
-
-
-
-
+            <div id="accessibilityIssuesContainer">
+                @if (Model.AccessibilityIssues == null || !Model.AccessibilityIssues.Any())
+                {
+                    <div class="alert alert-primary" role="alert">
+                        <strong>Way to go! Your site is WCAG-approved and accessible to all.</strong>
+                    </div>
+                }
+                else
+                {
+                    @await Html.PartialAsync("_AccessibilityIssuesPartial", Model.AccessibilityIssues)
+                }
             </div>
         </div>
     </div>
+</div>
+<br><br><br>
 
+@if (!userIsAuthenticated)
+{
+    <div class="alert alert-warning mt-4">
+        <p><strong>Want to save this report?</strong> Create an account or log in now — we'll automatically link this report to your profile.</p>
+
+        <form method="post" asp-action="StoreReportIdBeforeAuth" asp-controller="Home">
+            <input type="hidden" name="reportId" value="@Model.Id" />
+            <button type="submit" name="authType" value="register" class="btn btn-outline-primary me-2">Create Account</button>
+            <button type="submit" name="authType" value="login" class="btn btn-outline-secondary">Log In</button>
+        </form>
+    </div>
+}
 
 @*
 ============================================================================================
@@ -134,7 +135,6 @@
     <a asp-action="DownloadReport" asp-route-id="@Model.Id" class="btn btn-primary">
         Download PDF Report
     </a>
-
 
 </div> @* End tag for #reportContainer *@
 </div> @*End tag for .container *@

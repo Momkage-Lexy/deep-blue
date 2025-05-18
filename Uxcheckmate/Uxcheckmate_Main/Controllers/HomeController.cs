@@ -7,10 +7,17 @@ using System.Text.Json;
 using System.Diagnostics;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 using Microsoft.Playwright;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewEngines;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Uxcheckmate_Main.Controllers;
 
@@ -25,12 +32,16 @@ public class HomeController : Controller
     private readonly PdfExportService _pdfExportService;
     private readonly IScreenshotService _screenshotService;
     private readonly IViewRenderService _viewRenderService;
+    private readonly SignInManager<IdentityUser> _signInManager;
+    private readonly UserManager<IdentityUser> _userManager;
     private readonly IBackgroundTaskQueue _backgroundTaskQueue;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IMemoryCache _cache;
+
 
     public HomeController(ILogger<HomeController> logger, HttpClient httpClient, UxCheckmateDbContext dbContext, 
         IOpenAiService openAiService, IAxeCoreService axeCoreService, IReportService reportService, 
-        PdfExportService pdfExportService, IScreenshotService screenshotService, IViewRenderService viewRenderService,IBackgroundTaskQueue backgroundTaskQueue, IServiceScopeFactory scopeFactory)
+        PdfExportService pdfExportService, IScreenshotService screenshotService, IViewRenderService viewRenderService,IBackgroundTaskQueue backgroundTaskQueue, IServiceScopeFactory scopeFactory, IMemoryCache cache, UserManager<IdentityUser> userManager)
         
     {
         _logger = logger;
@@ -41,8 +52,10 @@ public class HomeController : Controller
         _pdfExportService = pdfExportService;
         _screenshotService = screenshotService;
         _viewRenderService = viewRenderService;
+        _userManager = userManager;
         _backgroundTaskQueue = backgroundTaskQueue;
         _scopeFactory = scopeFactory;
+        _cache = cache;
     }
 
 
@@ -73,25 +86,22 @@ public class HomeController : Controller
                 ModelState.AddModelError("url", "URL cannot be empty.");
                 return View("Index");
             }
+                // Normalize the URL *before* checking if it's reachable
+                url = NormalizeUrl(url);
 
-            // Normalize the URL *before* checking if it's reachable
-            url = NormalizeUrl(url);
-
-            if (!await IsUrlReachable(url, cancellationToken))
+            if (!await IsUrlReachable(url))
             {
                 TempData["UrlUnreachable"] = "The URL you entered seems incorrect or no longer exists. Please try again.";
                 return RedirectToAction("Index");
             }
 
-            var websiteScreenshot = await CaptureScreenshot(url, cancellationToken);
-
+            var websiteScreenshot = await CaptureScreenshot(url);
             if (string.IsNullOrEmpty(websiteScreenshot ))
             {
                 _logger.LogError("Failed to capture screenshot for URL: {Url}", url);
                 ModelState.AddModelError("", "An error occurred while capturing the screenshot.");
                 return View("Index");
             }
-            
             TempData["WebsiteScreenshot"] = websiteScreenshot;
 
             // Check if the user is authenticated and get the user ID
@@ -107,24 +117,19 @@ public class HomeController : Controller
             // Create and save the report record.
             var report = await CreateOrUpdateReport(url, cancellationToken);
 
-            // Save the report immediately to get a valid ID
-            _context.Reports.Add(report);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            // Run accessibility analysis
+            // Run accessibility and design analysis
             var accessibilityIssues = await _axeCoreService.AnalyzeAndSaveAccessibilityReport(report, cancellationToken);
 
             // Attach results, and set Processing status
             report.AccessibilityIssues = accessibilityIssues.ToList();
             report.Status = "Processing"; 
-            await _context.SaveChangesAsync(cancellationToken); 
+            await _context.SaveChangesAsync(cancellationToken);
 
             // Queue background design work
             await _backgroundTaskQueue.QueueBackgroundWorkItemAsync(async token =>
             {
                 try
                 {
-                    // Create a new scoped service provider for dependency injection
                     using var scope = _scopeFactory.CreateScope();
 
                     // Retrieve a scoped instance of the database context
@@ -133,7 +138,7 @@ public class HomeController : Controller
                     // Retrieve a scoped instance of the report service
                     var scopedReportService = scope.ServiceProvider.GetRequiredService<IReportService>();
 
-                    // Generate the design issues by analyzing the report
+                    // Generate the design issues
                     var designIssues = await scopedReportService.GenerateReportAsync(report, token);
 
                     // Retrieve the most up-to-date version of the report from the database
@@ -173,9 +178,9 @@ public class HomeController : Controller
                 foreach (var issue in report.DesignIssues){
                     issue.Category = await _context.DesignCategories.FindAsync(issue.CategoryId);
                 }
-            }*/
+            }
             // Fetch the report from the database to include related issues and categories
-        /*  Report fullReport;
+            Report fullReport;
             if (!string.IsNullOrEmpty(userId)){
             // Fetch the full report including related issues and categories
             fullReport = await _context.Reports
@@ -191,7 +196,6 @@ public class HomeController : Controller
                 .Include(r => r.AccessibilityIssues).ThenInclude(a => a.Category)
                 .Include(r => r.DesignIssues).ThenInclude(d => d.Category)
                 .FirstOrDefaultAsync(r => r.Id == report.Id);
-
             // Handle the case where the report could not be fetched
             if (fullReport == null)
             {
@@ -208,7 +212,6 @@ public class HomeController : Controller
 
             // Add to TempData for PDF Printing when not logged in
             StoreReportInTempData(report);
-
             // If the request is an AJAX call, return the partial view
             if (isAjax)
             {
@@ -219,11 +222,30 @@ public class HomeController : Controller
             return View("Results", fullReport);
         }
         catch (Exception ex)
+
         {
             _logger.LogError(ex, "Unhandled error during report generation for URL: {Url}", url);
             TempData["ScrapingError"] = "An unexpected error occurred during the scan. Please try again.";
             return RedirectToAction("Index");
         }
+    }
+    
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SaveReportToUser(int reportId)
+    {
+        var report = await _context.Reports.FindAsync(reportId);
+        if (report == null) return NotFound();
+
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(report.UserID))
+        {
+            report.UserID = userId;
+            _context.Reports.Update(report);
+            await _context.SaveChangesAsync();
+        }
+
+        return RedirectToAction("ReportDetails", new { id = reportId }); // or your actual view route
     }
 
     [HttpGet]
@@ -264,6 +286,33 @@ public class HomeController : Controller
         }).ToList();
         return View(reportDTOs);
     }
+
+    [Authorize] // Need to be logged in to submit feedback
+    public async Task<IActionResult> UserFeedback(){
+        return View();
+    }
+
+    [Authorize]
+    [HttpPost]
+    public async Task<IActionResult> SubmitFeedback(UserFeedback feedback)
+    {
+        if (string.IsNullOrWhiteSpace(feedback.Message)){
+            ModelState.AddModelError("", "Feedback cannot be empty.");
+            return View("Feedback");
+        }
+        var isValid = Regex.IsMatch(feedback.Message, @"^[a-zA-Z0-9\s.,?!'""\-\(\)\[\]@]*$");
+        if (!isValid){
+            ModelState.AddModelError("", "Feedback contains invalid characters.");
+            return View("Feedback");
+        }
+        feedback.UserID = User.Identity?.Name; 
+        feedback.DateSubmitted = DateTime.UtcNow;
+        _context.UserFeedbacks.Add(feedback);
+        await _context.SaveChangesAsync();
+        TempData["Success"] = "Feedback submitted!";
+        return RedirectToAction("Feedback");
+    }
+
 
     [HttpGet]
     public async Task<IActionResult> DownloadReport(int id = 0)
@@ -318,7 +367,7 @@ public class HomeController : Controller
             }
         }
         var pdfBytes = _pdfExportService.GenerateReportPdf(report);
-        return File(pdfBytes, "application/pdf", $"UXCheckmate_Report_{report.Id}.pdf");
+        return File(pdfBytes, "application/pdf", $"UxCheckmate_Report_ID_{report.Id}.pdf");
     }
 
     [HttpGet]
@@ -331,11 +380,7 @@ public class HomeController : Controller
             .FirstOrDefaultAsync(r => r.Id == id);
 
         // If the report is not found, return a 404 Not Found response
-        if (report == null)
-        {
-            _logger.LogWarning("Polling requested but report ID {Id} was not found.", id);
-            return Json(new { designHtml = "", accessibilityHtml = "" });
-        }
+        if (report == null) return NotFound();
 
         // Store the current sort order in ViewBag to be used by partial views for rendering sorted data
         ViewBag.CurrentSort = sortOrder;
@@ -416,18 +461,15 @@ public class HomeController : Controller
         return url.TrimEnd('/');
     }
 
-    private async Task<bool> IsUrlReachable(string url, CancellationToken cancellationToken = default)
+    private async Task<bool> IsUrlReachable(string url)
     {
         try
         {
-            using var httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(30)
-            };
+            using var httpClient = new HttpClient();
             var request = new HttpRequestMessage(HttpMethod.Get, url);
             _logger.LogInformation("Request Headers: {Headers}", request.Headers);
 
-            var response = await httpClient.SendAsync(request, cancellationToken);
+            var response = await httpClient.SendAsync(request);
             _logger.LogInformation("Response Headers: {Headers}", response.Headers);
 
             return response.IsSuccessStatusCode;
@@ -435,12 +477,11 @@ public class HomeController : Controller
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "The URL is unreachable: {Url}", url);
-            TempData["UrlUnreachable"] = "That URL is unreachable at this time. Please try again.";
             return false;
         }
     }
 
-    private async Task<string?> CaptureScreenshot(string url, CancellationToken cancellationToken = default)
+    private async Task<string?> CaptureScreenshot(string url)
     {
         if (string.IsNullOrEmpty(url))
         {
@@ -450,14 +491,27 @@ public class HomeController : Controller
 
         try
         {
-            var screenshotOptions = new PageScreenshotOptions { FullPage = true };
-            var screenshot = await _screenshotService.CaptureScreenshot(screenshotOptions, url, cancellationToken);
+            string cacheKey = $"screenshot_{url.ToLowerInvariant()}";
+
+            // Try get from cache
+            if (_cache.TryGetValue(cacheKey, out string cachedScreenshot))
+            {
+                _logger.LogInformation("Using cached screenshot for {Url}.", url);
+                return cachedScreenshot;
+            }
+
+            // Not cached → capture screenshot
+            var screenshotOptions = new PageScreenshotOptions { FullPage = false };
+            var screenshot = await _screenshotService.CaptureScreenshot(screenshotOptions, url);
 
             if (string.IsNullOrEmpty(screenshot))
             {
                 _logger.LogError("Failed to capture screenshot for URL: {Url}", url);
                 return null;
             }
+
+            // Cache for 1 hour
+            _cache.Set(cacheKey, screenshot, TimeSpan.FromHours(1));
 
             return screenshot;
         }
@@ -479,30 +533,39 @@ public class HomeController : Controller
             AccessibilityIssues = new List<AccessibilityIssue>(),
             DesignIssues = new List<DesignIssue>()
         };
-        if (!string.IsNullOrEmpty(userId)){
-            // Seeing if user already has a report under the url
-            var existingReport = await _context.Reports.Include(r => r.AccessibilityIssues).Include(r => r.DesignIssues).FirstOrDefaultAsync(r => r.Url == url && r.UserID == userId);
-            if (existingReport != null){
-                // Deleting old report information [May decide to archive in later sprint]
+        if (!string.IsNullOrEmpty(userId))
+        {
+            // Authenticated user flow (replace old report, then save)
+            var existingReport = await _context.Reports
+                .Include(r => r.AccessibilityIssues)
+                .Include(r => r.DesignIssues)
+                .FirstOrDefaultAsync(r => r.Url == url && r.UserID == userId);
+
+            if (existingReport != null)
+            {
                 _context.AccessibilityIssues.RemoveRange(existingReport.AccessibilityIssues);
                 _context.DesignIssues.RemoveRange(existingReport.DesignIssues);
                 _context.Reports.Remove(existingReport);
-                await _context.SaveChangesAsync();
 
-                _context.Entry(existingReport).State = EntityState.Detached;
+              //  _context.Entry(existingReport).State = EntityState.Detached;
                 _logger.LogInformation("Old report for user {UserId} and URL {Url} removed.", userId, url);
             }
+
             _context.Reports.Add(report);
             await _context.SaveChangesAsync();
             _logger.LogInformation("New report saved to DB with ID: {ReportId}", report.Id);
-        }else{
-            _logger.LogInformation("User not authenticated. Generating a report without saving to DB.");
+        }
+        else
+        {
+            // Unauthenticated user — SAVE the report anyway so it gets an ID
+            _context.Reports.Add(report);
+            await _context.SaveChangesAsync(); // This gives the report a valid ID!
+            _logger.LogInformation("Anonymous report saved to DB with ID: {ReportId}", report.Id);
         }
         return report;
     }
 
-    [HttpGet]
-    [ResponseCache(NoStore = true, Duration = 0, Location = ResponseCacheLocation.None)]
+
     private void SortReportIssues(Report report, string sortOrder)
     {
         report.DesignIssues = sortOrder switch
@@ -518,6 +581,17 @@ public class HomeController : Controller
             "severity-low-high" => report.AccessibilityIssues.OrderBy(i => i.Severity).ThenBy(i => i.Category.Name).ToList(),
             _ => report.AccessibilityIssues.OrderBy(i => i.Category.Name).ThenByDescending(i => i.Severity).ToList()
         };
+    }
+    
+    [HttpPost]
+    public IActionResult StoreReportIdBeforeAuth(int reportId, string authType)
+    {
+        TempData["ReportId"] = reportId;
+
+        if (authType == "register")
+            return Redirect($"/Identity/Account/Register?reportId={reportId}");
+        else
+            return Redirect($"/Identity/Account/Login?reportId={reportId}");
     }
 
     private void StoreReportInTempData(Report report)

@@ -1,4 +1,4 @@
-/*using NUnit.Framework;
+using NUnit.Framework;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -8,6 +8,7 @@ using Uxcheckmate_Main.Controllers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Memory;
 
 
 namespace UrlValidation_Tests
@@ -27,6 +28,10 @@ namespace UrlValidation_Tests
             _controller = new HomeController(
                 _mockLogger.Object,
                 _httpClient,
+                null,
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -79,4 +84,3 @@ namespace UrlValidation_Tests
                 }
     }
 }
-*/

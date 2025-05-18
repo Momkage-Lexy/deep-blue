@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Uxcheckmate_Main.Models;
 using Uxcheckmate_Main.Services;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace Service_Tests
 {
@@ -34,8 +35,9 @@ namespace Service_Tests
         private Mock<ISymmetryService> _symmetryServiceMock;
         private ScrapedContent _mockScrapedContent;
         private Mock<IServiceScopeFactory> _scopeFactoryMock;
+        private Mock<IMemoryCache> _cacheMock;
+        private IPlaywrightApiService _mockPlaywrightApiService;
 
- // await _reportService.RunCustomAnalysisAsync("url", "Color Scheme", "description", new Dictionary<string, object>());
         [SetUp]
         public void Setup()
         {
@@ -80,9 +82,8 @@ namespace Service_Tests
             _zPatternServiceMock = new Mock<IZPatternService>();
             _symmetryServiceMock = new Mock<ISymmetryService>();
             _scopeFactoryMock = new Mock<IServiceScopeFactory>();
-
-
-
+            _cacheMock = new Mock<IMemoryCache>();
+            _mockPlaywrightApiService = new MockPlaywrightApiService();
 
             // Setup default playwright scraper response
             _playwrightScraperServiceMock
@@ -133,7 +134,9 @@ namespace Service_Tests
                 _fPatternServiceMock.Object,
                 _zPatternServiceMock.Object,
                 _symmetryServiceMock.Object,
-                _scopeFactoryMock.Object 
+                _scopeFactoryMock.Object,
+                _cacheMock.Object,
+                _mockPlaywrightApiService
             );
         }
 
@@ -158,7 +161,7 @@ namespace Service_Tests
             Assert.That(result, Is.Empty);
         }
 
-     /*   [Test]
+        [Test]
         public async Task GenerateReportAsync_Returns_Issue_If_Issue_Found()
         {
             // Arrange
@@ -180,7 +183,7 @@ namespace Service_Tests
             Assert.That(result.Count, Is.EqualTo(1));
             Assert.That(result.First().Message, Is.EqualTo("Issue Found"));
         }
-*/
+
         [Test]
         public async Task GenerateReportAsync_Skips_Category_With_Empty_ScanMethod()
         {

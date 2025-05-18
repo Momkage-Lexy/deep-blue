@@ -34,6 +34,7 @@ namespace Uxcheckmate_Main.Services
                 {
                     Headless = true, // Launch the browser in headless mode
                     Args = new[] { "--headless=chrome" }// Additional arguments for the browser
+
                 });
                 _logger.LogInformation("Playwright browser instance created.");
             }

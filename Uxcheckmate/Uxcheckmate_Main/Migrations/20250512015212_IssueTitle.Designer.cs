@@ -12,8 +12,8 @@ using Uxcheckmate_Main.Models;
 namespace Uxcheckmate_Main.Migrations
 {
     [DbContext(typeof(UxCheckmateDbContext))]
-    [Migration("20250502175631_createdat")]
-    partial class createdat
+    [Migration("20250512015212_IssueTitle")]
+    partial class IssueTitle
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -147,6 +147,10 @@ namespace Uxcheckmate_Main.Migrations
                     b.Property<int>("Severity")
                         .HasColumnType("int");
 
+                    b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Title");
+
                     b.Property<string>("WCAG")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -211,6 +215,10 @@ namespace Uxcheckmate_Main.Migrations
 
                     b.Property<int>("Severity")
                         .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("Title");
 
                     b.HasKey("Id")
                         .HasName("PK__DesignIs__3214EC277C5F35C0");
@@ -330,7 +338,6 @@ namespace Uxcheckmate_Main.Migrations
                         .HasColumnType("date");
 
                     b.Property<string>("Status")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Summary")
