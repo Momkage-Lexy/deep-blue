@@ -25,6 +25,7 @@ namespace BDD_Tests.StepDefinitions
             driver = webDriver;
         }
 
+        /** 
         [Given("user is logged in")]
         public void GivenUserIsLoggedIn()
         {
@@ -60,13 +61,15 @@ namespace BDD_Tests.StepDefinitions
         {
             _result = await _controller.UserDash();
         }
-        [Then("they should be in user dash page")]
+        [Then("they should be in the user dash page")]
         public void ThenTheyShouldSeeALogout()
         {
             var viewResult = _result as ViewResult;
             Assert.That(viewResult, Is.Not.Null);
             Assert.That(viewResult.ViewName, Is.Null.Or.Empty);
         }
+
+        */
 
         [When("the user clicks on one grouped folder of one domain")]
         public void WhenUserClicksOnGroupedFolder()

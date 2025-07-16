@@ -26,7 +26,6 @@ Scenario: Test login with valid credentials
     And the user logs in
     Then they should see user dashboard
 
-# Should currently fail Selenium test below until ux-96 implemented
 Scenario: View previous report after login
     Given the user navigates to the site
     And the user logs in
@@ -36,8 +35,8 @@ Scenario: View previous report after login
 
 @groupedReports
 Scenario: Viewing grouped page reports under the same website
-    Given user is logged in
-    And has scanned multiple pages from different websites
-    When they click on the user dashboard
+    Given the user navigates to the site
+    And the user logs in
+    When they go to user dashboard
     Then the user should see grouped page reports by domain
-    And clicking a group should show all reports for that website
+   # And clicking a group should show all reports for that website

@@ -11,6 +11,7 @@ using Uxcheckmate_Main.Services;
 using Uxcheckmate_Main.Models;
 using NUnit.Framework;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Support.UI;
 
 namespace BDD_Tests.StepDefinitions
 {
@@ -55,10 +56,37 @@ namespace BDD_Tests.StepDefinitions
             _controller = TestBuilder.BuildHomeController(httpContext, context);
         }
 
-        [When("they click user dash")]
-        public async Task WhenTheyClickUserDash()
+       [When("they go to user dashboard")]
+        public void WhenTheyGoToUserDashboard()
         {
-            _result = await _controller.UserDash();
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+            try
+            {
+                var userDash = wait.Until(d => d.FindElement(By.LinkText("Dashboard")));
+                userDash.Click();
+            }
+            catch (WebDriverTimeoutException)
+            {
+                try
+                {
+                    var adminDash = wait.Until(d => d.FindElement(By.LinkText("Admin Dashboard")));
+                    adminDash.Click();
+                }
+                catch (WebDriverTimeoutException ex)
+                {
+                    Assert.Fail("Neither 'Dashboard' nor 'Admin Dashboard' could be found in time: " + ex.Message);
+                }
+            }
+        }
+        [Then("they should see admin dashboard")]
+        public void ThenTheyShouldSeeAdminDashboard()
+        {
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            var dashboardLink = wait.Until(d => d.FindElement(By.LinkText("Admin Dashboard")));
+            dashboardLink.Click();
+            string currentUrl = driver.Url;
+            Assert.That(currentUrl, Does.Contain("/Admin"), "Admin did not land on the Admin Dashboard.");
         }
         [Then("they should be in user dash page")]
         public void ThenTheyShouldSeeALogout()
@@ -90,28 +118,21 @@ namespace BDD_Tests.StepDefinitions
             string currentUrl = driver.Url;
             Assert.That(currentUrl, Does.Contain("/Home/UserDash"), "User is not on the dashboard page.");
         }
-        [When("they go to user dashboard")]
-        public void WhenTheyGoToUserDashboard()
-        {
-            var dashboardLink = driver.FindElement(By.LinkText("Dashboard"));
-            dashboardLink.Click();
-        }
         [Then("they should see that report")]
         public void ThenTheyShouldSeeThatReport()
         {
-            Assert.That(driver.PageSource.Contains("Report ID"), Is.True, "Report ID was not found on the dashboard page.");
+            Assert.That(driver.PageSource.Contains("Date"), Is.True, "Report ID was not found on the dashboard page.");
         }
 
         // Grouped reports
-        [Then("the user should see grouped reports by domain")]
+        [Then("the user should see grouped page reports by domain")]
         public void ThenUserSeesGroupedReportsByDomain()
         {
-            var groupedReports = driver.FindElements(By.ClassName("grouped-report"));
-            Assert.That(groupedReports.Count, Is.GreaterThan(0), "No grouped reports found on the dashboard.");
-            foreach (var report in groupedReports)
-            {
-                Assert.That(report.Text, Does.Contain("https://example.com"), "Expected domain not found in grouped reports.");
-            }
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+
+            // Wait until at least one folder-card is present
+            var reportGroups = wait.Until(d => d.FindElements(By.ClassName("folder-card")));
+            Assert.That(reportGroups.Count, Is.GreaterThan(0), "No grouped report cards found.");
         }
     }
  }

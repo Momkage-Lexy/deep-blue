@@ -31,6 +31,8 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
         private readonly ILogger<RegisterModel> _logger;
         private readonly IEmailSender _emailSender;
         private readonly UxCheckmateDbContext _context;
+        private readonly ICaptchaService _captchaService;
+        private readonly IConfiguration _configuration;
 
         public RegisterModel(
             UserManager<IdentityUser> userManager,
@@ -38,7 +40,9 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
             SignInManager<IdentityUser> signInManager,
             ILogger<RegisterModel> logger,
             IEmailSender emailSender,
-            UxCheckmateDbContext context)
+            UxCheckmateDbContext context,
+            ICaptchaService captchaService,
+            IConfiguration configuration)
         {
             _userManager = userManager;
             _userStore = userStore;
@@ -47,7 +51,12 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
             _logger = logger;
             _emailSender = emailSender;
             _context = context;
+            _captchaService = captchaService;
+            _configuration = configuration;
         }
+
+        [BindProperty]
+        public string CaptchaToken { get; set; }
 
         [BindProperty]
         public InputModel Input { get; set; }
@@ -67,9 +76,11 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
             public string Email { get; set; }
 
             [Required]
-            [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
+            // [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
             [DataType(DataType.Password)]
             [Display(Name = "Password")]
+            [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$", 
+                ErrorMessage = "Password must be at least 6 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.")]
             public string Password { get; set; }
 
             [DataType(DataType.Password)]
@@ -82,65 +93,77 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
         {
             ReturnUrl = returnUrl;
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            ViewData["CaptchaSiteKey"] = _configuration["Captcha:SiteKey"];
         }
 
         public async Task<IActionResult> OnPostAsync(string returnUrl = null)
         {
+            ViewData["CaptchaSiteKey"] = _configuration["Captcha:SiteKey"];
             returnUrl ??= Url.Content("~/");
             ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
-
-            if (ModelState.IsValid)
+            var captchaEnabledSetting = _configuration["Captcha:Enabled"];
+            var captchaEnabled = string.Equals(captchaEnabledSetting, "true", StringComparison.OrdinalIgnoreCase);
+            if (captchaEnabled)
             {
-                var user = CreateUser();
-
-                await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
-                await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
-                var result = await _userManager.CreateAsync(user, Input.Password);
-
-                if (result.Succeeded)
+                if (string.IsNullOrEmpty(CaptchaToken) || !await _captchaService.VerifyTokenAsync(CaptchaToken))
                 {
-                    _logger.LogInformation("User created a new account with password.");
-
-                    var userId = await _userManager.GetUserIdAsync(user);
-                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                    var callbackUrl = Url.Page(
-                        "/Account/ConfirmEmail",
-                        pageHandler: null,
-                        values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl },
-                        protocol: Request.Scheme);
-
-                    await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
-                        $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
-
-                    if (_userManager.Options.SignIn.RequireConfirmedAccount)
-                    {
-                        return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
-                    }
-                    else
-                    {
-                        await _signInManager.SignInAsync(user, isPersistent: false);
-
-                        if (ReportId.HasValue)
-                        {
-                            var report = await _context.Reports.FindAsync(ReportId.Value);
-                            if (report != null && string.IsNullOrEmpty(report.UserID))
-                            {
-                                report.UserID = user.Id;
-                                _context.Reports.Update(report);
-                                await _context.SaveChangesAsync();
-                            }
-                        }
-
-                        return LocalRedirect(returnUrl);
-                    }
-                }
-
-                foreach (var error in result.Errors)
-                {
-                    ModelState.AddModelError(string.Empty, error.Description);
+                    ModelState.AddModelError(string.Empty, "Please complete the CAPTCHA to register.");
+                    return Page();
                 }
             }
+            if (ModelState.IsValid)
+                {
+                    var user = CreateUser();
+
+                    await _userStore.SetUserNameAsync(user, Input.Email, CancellationToken.None);
+                    await _emailStore.SetEmailAsync(user, Input.Email, CancellationToken.None);
+                    var result = await _userManager.CreateAsync(user, Input.Password);
+
+                    if (result.Succeeded)
+                    {
+                        _logger.LogInformation("User created a new account with password.");
+
+                        var userId = await _userManager.GetUserIdAsync(user);
+                        var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                        code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+                        var callbackUrl = Url.Page(
+                            "/Account/ConfirmEmail",
+                            pageHandler: null,
+                            values: new { area = "Identity", userId = userId, code = code, returnUrl = returnUrl
+                            },
+                            protocol: Request.Scheme);
+
+                        await _emailSender.SendEmailAsync(Input.Email, "Confirm your email",
+                            $"Please confirm your account by <a href='{HtmlEncoder.Default.Encode(callbackUrl)}'>clicking here</a>.");
+
+                        if (_userManager.Options.SignIn.RequireConfirmedAccount)
+                        {
+                            return RedirectToPage("RegisterConfirmation", new { email = Input.Email, returnUrl = returnUrl });
+                        }
+                        else
+                        {
+                            await _signInManager.SignInAsync(user, isPersistent: false);
+
+                            if (ReportId.HasValue)
+                            {
+                                var report = await _context.Reports.FindAsync(ReportId.Value);
+                                if (report != null && string.IsNullOrEmpty(report.UserID))
+                                {
+                                    report.UserID = user.Id;
+                                    _context.Reports.Update(report);
+                                    await _context.SaveChangesAsync();
+                                }
+                            }
+
+                            return LocalRedirect(returnUrl);
+                        }
+                    }
+
+                    foreach (var error in result.Errors)
+                    {
+                        ModelState.AddModelError(string.Empty, error.Description);
+                    }
+                }
 
             // If we got this far, something failed, redisplay form
             return Page();

@@ -11,6 +11,7 @@ using Uxcheckmate_Main.Services;
 using Uxcheckmate_Main.Models;
 using NUnit.Framework;
 using OpenQA.Selenium;
+using OpenQA.Selenium.Support.UI;
 
 namespace BDD_Tests.StepDefinitions
 {
@@ -26,6 +27,7 @@ namespace BDD_Tests.StepDefinitions
             driver = webDriver;
         }
 
+        /**
         [Given("user is logged in as an \"(.*)\"")]
         public void GivenUserIsLoggedInAsRole(string role)
         {
@@ -74,7 +76,8 @@ namespace BDD_Tests.StepDefinitions
             var dashboardLink = driver.FindElement(By.LinkText("Dashboard"));
             dashboardLink.Click();
             string currentUrl = driver.Url;
-            Assert.That(currentUrl, Does.Contain("/Home/UserDash").Or.Contain("/Admin/Index"), "User did not land on expected dashboard page.");
+            Assert.That(currentUrl, Does.Contain("/Admin"), "Admin did not land on the Admin Dashboard.");
         }
+        */
     }
 }

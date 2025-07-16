@@ -21,12 +21,19 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
     {
         private readonly SignInManager<IdentityUser> _signInManager;
         private readonly ILogger<LoginModel> _logger;
+        private readonly ICaptchaService _captchaService;
+        private readonly IConfiguration _configuration;
 
-        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<IdentityUser> signInManager, ILogger<LoginModel> logger, ICaptchaService captchaService, IConfiguration configuration)
         {
             _signInManager = signInManager;
             _logger = logger;
+            _captchaService = captchaService;
+            _configuration = configuration;
         }
+
+        [BindProperty]
+        public string CaptchaToken { get; set; }
 
         /// <summary>
         ///     This API supports the ASP.NET Core Identity default UI infrastructure and is not intended to be used
@@ -73,7 +80,11 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
             ///     directly from your code. This API may change or be removed in future releases.
             /// </summary>
             [Required]
+            // [StringLength(100, ErrorMessage = "The {0} must be at least {2} and at max {1} characters long.", MinimumLength = 6)]
             [DataType(DataType.Password)]
+            [Display(Name = "Password")]
+            [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$", 
+                ErrorMessage = "Password must be at least 6 characters long, contain at least one uppercase letter, one lowercase letter, one number, and one special character.")]
             public string Password { get; set; }
 
             /// <summary>
@@ -90,6 +101,7 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
             {
                 ModelState.AddModelError(string.Empty, ErrorMessage);
             }
+            ViewData["CaptchaSiteKey"] = _configuration["Captcha:SiteKey"];
 
             returnUrl ??= Url.Content("~/");
 
@@ -105,33 +117,48 @@ namespace TempIdentityProject.Areas.Identity.Pages.Account
         {
             returnUrl ??= Url.Content("~/");
 
-            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            ViewData["CaptchaSiteKey"] = _configuration["Captcha:SiteKey"];
 
-            if (ModelState.IsValid)
+            ExternalLogins = (await _signInManager.GetExternalAuthenticationSchemesAsync()).ToList();
+            
+            var captchaEnabledSetting = _configuration["Captcha:Enabled"];
+            var captchaEnabled = string.Equals(captchaEnabledSetting, "true", StringComparison.OrdinalIgnoreCase);
+            if (captchaEnabled)
             {
-                // This doesn't count login failures towards account lockout
-                // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
-                if (result.Succeeded)
+                if (string.IsNullOrWhiteSpace(CaptchaToken) || !await _captchaService.VerifyTokenAsync(CaptchaToken))
                 {
-                    _logger.LogInformation("User logged in.");
-                    return LocalRedirect(returnUrl);
-                }
-                if (result.RequiresTwoFactor)
-                {
-                    return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
-                }
-                if (result.IsLockedOut)
-                {
-                    _logger.LogWarning("User account locked out.");
-                    return RedirectToPage("./Lockout");
-                }
-                else
-                {
-                    ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                    ModelState.AddModelError("CaptchaToken", "Please complete the CAPTCHA to continue.");
                     return Page();
                 }
             }
+
+            if (ModelState.IsValid)
+                {
+                    // This doesn't count login failures towards account lockout
+                    // To enable password failures to trigger account lockout, set lockoutOnFailure: true
+                    var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                    ViewData["CaptchaSiteKey"] = _configuration["Captcha:SiteKey"];
+                    if (result.Succeeded)
+                    {
+                        _logger.LogInformation("User logged in.");
+                        return LocalRedirect(returnUrl);
+                    }
+                    if (result.RequiresTwoFactor)
+                    {
+                        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+                    }
+                    if (result.IsLockedOut)
+                    {
+                        _logger.LogWarning("User account locked out.");
+                        return RedirectToPage("./Lockout");
+                    }
+                    else
+                    {
+                        ModelState.AddModelError(string.Empty, "Invalid login attempt.");
+                        return Page();
+                    }
+                }
+
 
             // If we got this far, something failed, redisplay form
             return Page();
